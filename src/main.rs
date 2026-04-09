@@ -4,7 +4,6 @@ use crate::{
 };
 
 mod chunk;
-mod parser;
 mod vm;
 
 fn main() {
