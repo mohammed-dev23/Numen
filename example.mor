@@ -1,2 +1,2 @@
-let x = (8 + 9);
-slove (x);
+let x = 8;
+print -x;

@@ -1,10 +1,15 @@
-use std::u8;
+use std::{ops::Neg, u8};
 
 //this reper macro tells rust to treat or eunm values as bytes
 #[repr(u8)]
 pub enum OpCode {
     OpR,
     OpC,
+    OpNegate,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide,
 }
 
 #[derive(Debug)]
@@ -18,6 +23,16 @@ pub struct Chunk {
 pub enum Values {
     #[allow(warnings)]
     Double(f64),
+}
+
+impl Neg for Values {
+    type Output = Values;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Values::Double(d) => Values::Double(-d),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -76,6 +91,16 @@ impl Chunk {
             i if i == OpCode::OpR as u8 => Self::simple_instruction(offset, "OPR".to_string()),
             i if i == OpCode::OpC as u8 => {
                 Self::constant_instruction(&self, "OPC".to_string(), offset)
+            }
+            i if i == OpCode::OpAdd as u8 => Self::simple_instruction(offset, "OPADD".to_string()),
+            i if i == OpCode::OpDivide as u8 => {
+                Self::simple_instruction(offset, "OPDIVIDE".to_string())
+            }
+            i if i == OpCode::OpSubtract as u8 => {
+                Self::simple_instruction(offset, "OPSUBTRACT".to_string())
+            }
+            i if i == OpCode::OpMultiply as u8 => {
+                Self::simple_instruction(offset, "OPMULTIPLY".to_string())
             }
             _ => {
                 println!("Unknown opcode {}", instruction);
