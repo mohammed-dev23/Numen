@@ -1,15 +1,35 @@
 use std::{ops::Neg, u8};
 
-//this reper macro tells rust to treat or eunm values as bytes
 #[repr(u8)]
 pub enum OpCode {
     OpR,
     OpC,
+
+    //values for UnaryOp
     OpNegate,
+    OpSqrt,
+    OpAbs,
+    OpFloor,
+    OpCeil,
+    OpSin,
+    OpCos,
+    OpTan,
+
+    //values for BinaryOp
     OpAdd,
     OpSubtract,
     OpMultiply,
     OpDivide,
+    OpMod,
+    OpPow,
+
+    //values for ComparisonOp
+    OpEq,
+    OpNotEq,
+    OpLt,
+    OpGt,
+    OpGte,
+    OpLte,
 }
 
 #[derive(Debug)]
@@ -22,7 +42,9 @@ pub struct Chunk {
 #[derive(Debug, Clone, Copy)]
 pub enum Values {
     #[allow(warnings)]
-    Double(f64),
+    Float(f64),
+    Int(i64),
+    Bool(bool),
 }
 
 impl Neg for Values {
@@ -30,7 +52,9 @@ impl Neg for Values {
 
     fn neg(self) -> Self::Output {
         match self {
-            Values::Double(d) => Values::Double(-d),
+            Values::Float(d) => Values::Float(-d),
+            Values::Int(d) => Values::Int(-d),
+            Values::Bool(b) => Values::Bool(b),
         }
     }
 }
@@ -102,6 +126,32 @@ impl Chunk {
             i if i == OpCode::OpMultiply as u8 => {
                 Self::simple_instruction(offset, "OPMULTIPLY".to_string())
             }
+            i if i == OpCode::OpMod as u8 => Self::simple_instruction(offset, "OPMOD".to_string()),
+            i if i == OpCode::OpPow as u8 => Self::simple_instruction(offset, "OPPOW".to_string()),
+            i if i == OpCode::OpNegate as u8 => {
+                Self::simple_instruction(offset, "OPNEGATE".to_string())
+            }
+            i if i == OpCode::OpSqrt as u8 => {
+                Self::simple_instruction(offset, "OPSQRT".to_string())
+            }
+            i if i == OpCode::OpAbs as u8 => Self::simple_instruction(offset, "OPABS".to_string()),
+            i if i == OpCode::OpFloor as u8 => {
+                Self::simple_instruction(offset, "OPFLOOR".to_string())
+            }
+            i if i == OpCode::OpCeil as u8 => {
+                Self::simple_instruction(offset, "OPCEIL".to_string())
+            }
+            i if i == OpCode::OpSin as u8 => Self::simple_instruction(offset, "OPSAN".to_string()),
+            i if i == OpCode::OpCos as u8 => Self::simple_instruction(offset, "OPCOS".to_string()),
+            i if i == OpCode::OpTan as u8 => Self::simple_instruction(offset, "OPTAN".to_string()),
+            i if i == OpCode::OpEq as u8 => Self::simple_instruction(offset, "OPEQ".to_string()),
+            i if i == OpCode::OpNotEq as u8 => {
+                Self::simple_instruction(offset, "OPNOTEQ".to_string())
+            }
+            i if i == OpCode::OpGt as u8 => Self::simple_instruction(offset, "OPGT".to_string()),
+            i if i == OpCode::OpLt as u8 => Self::simple_instruction(offset, "OPLT".to_string()),
+            i if i == OpCode::OpGte as u8 => Self::simple_instruction(offset, "OPGTE".to_string()),
+            i if i == OpCode::OpLte as u8 => Self::simple_instruction(offset, "OPLTE".to_string()),
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1
