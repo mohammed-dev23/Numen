@@ -171,8 +171,4 @@ impl<'s> Scanner<'s> {
             _ => TokenType::TId,
         })
     }
-
-    fn id_type() -> TokenType {
-        TokenType::TId
-    }
 }
