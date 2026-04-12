@@ -1,13 +1,19 @@
+use std::{
+    fs,
+    io::{self, Read},
+};
+
 use crate::{
     chunk::{Chunk, OpCode, Values},
     vm::VM,
 };
 
 mod chunk;
-mod debug;
+mod compiler;
+mod scanner;
 mod vm;
 
-fn main() {
+fn main() -> io::Result<()> {
     let mut chunk = Chunk::new_chunk();
 
     let value1 = chunk.add_constant(Values::Int(1));
@@ -110,7 +116,21 @@ fn main() {
 
     chunk.write_chunk(OpCode::OpR as u8, 123);
     chunk.disassembler("TEST RUN: BASIC MATH".to_string());
-    VM::new_vm(chunk).interpret();
+    VM::new_vm(chunk).interpret("".to_string());
+
+    #[cfg(feature = "test_scanner")]
+    {
+        cli()?;
+    }
+
+    Ok(())
 }
 
-pub fn cli() {}
+pub fn cli() -> io::Result<()> {
+    let mut file = String::new();
+    fs::File::open("/home/mohammed/programming/Rust/practice/mor/example.mor")?
+        .read_to_string(&mut file)?;
+
+    compiler::compile(&file);
+    Ok(())
+}

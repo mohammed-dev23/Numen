@@ -1,4 +1,4 @@
-use std::{ops::Neg, u8};
+use std::ops::Neg;
 
 #[repr(u8)]
 pub enum OpCode {
@@ -114,7 +114,7 @@ impl Chunk {
         match instruction {
             i if i == OpCode::OpR as u8 => Self::simple_instruction(offset, "OPR".to_string()),
             i if i == OpCode::OpC as u8 => {
-                Self::constant_instruction(&self, "OPC".to_string(), offset)
+                Self::constant_instruction(self, "OPC".to_string(), offset)
             }
             i if i == OpCode::OpAdd as u8 => Self::simple_instruction(offset, "OPADD".to_string()),
             i if i == OpCode::OpDivide as u8 => {

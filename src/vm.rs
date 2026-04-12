@@ -1,5 +1,5 @@
 use crate::chunk::{Chunk, OpCode, Values};
-use std::{f64, u8};
+use std::f64;
 
 pub struct VM {
     chunk: Chunk,
@@ -45,13 +45,13 @@ pub enum ComparisonOp {
 impl VM {
     pub fn new_vm(chunk: Chunk) -> Self {
         Self {
-            chunk: chunk,
+            chunk,
             ip: 0,
             stack: Vec::new(),
         }
     }
 
-    pub fn interpret(&mut self) -> InterpretResult {
+    pub fn interpret(&mut self, _source: String) -> InterpretResult {
         self.run()
     }
 
@@ -186,7 +186,7 @@ impl VM {
                 }
 
                 _ => {
-                    println!("{}", "! InterpretCompileErr !");
+                    println!("! InterpretCompileErr !");
                     return InterpretResult::InterpretCompileErr;
                 }
             }
@@ -239,7 +239,7 @@ impl VM {
                 BinaryOp::Divide => self.stack.push(Values::Float(c as f64 / b)),
                 BinaryOp::Multiply => self.stack.push(Values::Float(c as f64 * b)),
                 BinaryOp::Mod => self.stack.push(Values::Float(c as f64 % b)),
-                BinaryOp::Pow => self.stack.push(Values::Float(f64::from(c as f64).powf(b))),
+                BinaryOp::Pow => self.stack.push(Values::Float((c as f64).powf(b))),
             },
 
             _ => panic!("unsupported operation"),

@@ -1,2 +1,1 @@
-let x = 8;
-print -x;
+print 8 + 9;
