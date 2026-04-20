@@ -32,7 +32,7 @@ pub enum OpCode {
     OpLte,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chunk {
     pub code: Vec<u8>,
     pub constant: ValueArray,
@@ -59,7 +59,7 @@ impl Neg for Values {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValueArray {
     pub values: Vec<Values>,
 }
@@ -93,7 +93,7 @@ impl Chunk {
         self.constant.values.len() - 1
     }
 
-    pub fn disassembler(&self, chunk: String) {
+    pub fn disassembler(&self, chunk: &str) {
         println!("=={}==", chunk);
         let mut offset = 0;
 

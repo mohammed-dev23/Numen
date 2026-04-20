@@ -1,4 +1,7 @@
-use crate::chunk::{Chunk, OpCode, Values};
+use crate::{
+    chunk::{Chunk, OpCode, Values},
+    compiler::{compile, new_parser},
+};
 use std::f64;
 
 pub struct VM {
@@ -51,7 +54,16 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, _source: String) -> InterpretResult {
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        let mut chunk = self.chunk.clone();
+        let mut parser = new_parser(&mut chunk, source);
+
+        if !compile(&mut parser) {
+            return InterpretResult::InterpretCompileErr;
+        };
+
+        self.chunk = chunk;
+        self.ip = 0;
         self.run()
     }
 
@@ -70,13 +82,17 @@ impl VM {
                 self.chunk.disassembler_instruction(offset_for_debug);
             }
 
+            if self.ip >= self.chunk.code.len() {
+                return InterpretResult::InterpretOK;
+            }
+
             let instruction = self.read_bytes();
 
             match instruction {
                 i if i == OpCode::OpR as u8 => {
                     let v = self.stack.pop().unwrap();
                     println!(" {:?} ", v);
-                    return InterpretResult::InterpretOK;
+                    continue;
                 }
 
                 i if i == OpCode::OpC as u8 => {

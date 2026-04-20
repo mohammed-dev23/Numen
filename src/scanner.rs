@@ -7,29 +7,27 @@ pub struct Scanner<'s> {
     pub line: usize,
 }
 
-#[derive(Debug)]
-pub struct Token<'t> {
+#[derive(Debug, Clone)]
+pub struct Token {
     pub token_type: TokenType,
-    pub start: &'t str,
+    pub start: String,
     pub len: usize,
     pub line: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[repr(usize)]
 pub enum TokenType {
-    //single char tokens
+    TLr,
+    TRr,
     TPlus,
+    Tminus,
     TSemicolon,
-
-    //keywords
-    TPrint,
-
-    //literals
-    TNum,
+    Tint,
+    Tfloat,
     TStr,
     TId,
-
-    //other
+    TPrint,
     TEof,
     TErr,
 }
@@ -42,7 +40,7 @@ impl<'s> Scanner<'s> {
             line: 1,
         }
     }
-    pub fn scan_tokens(&mut self) -> Token<'_> {
+    pub fn scan_tokens(&mut self) -> Token {
         self.unconsumable();
         self.start = self.current;
 
@@ -57,6 +55,9 @@ impl<'s> Scanner<'s> {
             '"' => self.string_tokens(),
             c if c.is_ascii_digit() => self.num_tokens(),
             c if c.is_ascii_alphanumeric() => self.identifier(),
+            '(' => self.generate_token(TokenType::TLr),
+            ')' => self.generate_token(TokenType::TRr),
+            '-' => self.generate_token(TokenType::Tminus),
             _ => self.err_token("Unexpected character."),
         }
     }
@@ -65,19 +66,21 @@ impl<'s> Scanner<'s> {
         self.current.is_empty()
     }
 
-    fn generate_token(&self, t_type: TokenType) -> Token<'_> {
+    fn generate_token(&self, t_type: TokenType) -> Token {
+        let len = self.start.len() - self.current.len();
+
         Token {
             token_type: t_type,
-            start: self.start,
-            len: self.start.len() - self.current.len(),
+            start: self.start[..len].to_string(),
+            len,
             line: self.line,
         }
     }
 
-    fn err_token(&self, message: &'s str) -> Token<'_> {
+    fn err_token(&self, message: &'s str) -> Token {
         Token {
             token_type: TokenType::TErr,
-            start: message,
+            start: message.to_string(),
             len: message.len(),
             line: self.line,
         }
@@ -115,7 +118,7 @@ impl<'s> Scanner<'s> {
                 }
                 '/' => {
                     if self.peek_next() == '/' {
-                        while self.peek() != '\0' && !self.is_at_end() {
+                        while self.peek() != '\n' && !self.is_at_end() {
                             self.advance();
                         }
                     }
@@ -125,7 +128,7 @@ impl<'s> Scanner<'s> {
         }
     }
 
-    fn string_tokens(&mut self) -> Token<'_> {
+    fn string_tokens(&mut self) -> Token {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
@@ -141,7 +144,7 @@ impl<'s> Scanner<'s> {
         self.generate_token(TokenType::TStr)
     }
 
-    fn num_tokens(&mut self) -> Token<'_> {
+    fn num_tokens(&mut self) -> Token {
         while self.peek().is_ascii_digit() {
             self.advance();
         }
@@ -152,11 +155,12 @@ impl<'s> Scanner<'s> {
             while self.peek().is_ascii_digit() {
                 self.advance();
             }
+            return self.generate_token(TokenType::Tfloat);
         }
-        return self.generate_token(TokenType::TNum);
+        return self.generate_token(TokenType::Tint);
     }
 
-    fn identifier(&mut self) -> Token<'_> {
+    fn identifier(&mut self) -> Token {
         while self.peek().is_ascii_alphabetic() || self.peek().is_ascii_digit() {
             self.advance();
         }
