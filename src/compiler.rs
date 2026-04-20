@@ -1,5 +1,3 @@
-use std::u8;
-
 use crate::{
     chunk::{Chunk, OpCode, Values},
     scanner::{Scanner, Token, TokenType},
@@ -26,36 +24,36 @@ pub type ParseFn = fn(&mut Parser);
 const NONE_RULE: ParseRules = ParseRules {
     prefix: None,
     infix: None,
-    prec: Precedence::PRECsNone,
+    prec: Precedence::None,
 };
 
 static RULES: [ParseRules; 11] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
-        prec: Precedence::PRECsNone,
+        prec: Precedence::None,
     },
     NONE_RULE,
     ParseRules {
         prefix: None,
         infix: Some(binary),
-        prec: Precedence::PRECsTerms,
+        prec: Precedence::Terms,
     },
     ParseRules {
         prefix: Some(unary),
         infix: Some(binary),
-        prec: Precedence::PRECsTerms,
+        prec: Precedence::Terms,
     },
     NONE_RULE,
     ParseRules {
         prefix: Some(int_num),
         infix: None,
-        prec: Precedence::PRECsNone,
+        prec: Precedence::None,
     },
     ParseRules {
         prefix: Some(float_num),
         infix: None,
-        prec: Precedence::PRECsNone,
+        prec: Precedence::None,
     },
     NONE_RULE,
     NONE_RULE,
@@ -64,15 +62,15 @@ static RULES: [ParseRules; 11] = [
 ];
 #[derive(Debug, Clone, Copy)]
 pub enum Precedence {
-    PRECsNone,
-    PRECsAssignment, // =
-    PRECsEq,         // == !=
-    PRECsComps,      // > < >= <=
-    PRECsTerms,      // - +
-    PRECsFactors,    // * /
-    PRECsUnary,      // ! -
-    PRECsCall,       // . ()
-    PRECsPrime,
+    None,
+    Assignment, // =
+    Eq,         // == !=
+    Comps,      // > < >= <=
+    Terms,      // - +
+    Factors,    // * /
+    Unary,      // ! -
+    Call,       // . ()
+    Prime,
 }
 
 pub fn new_parser<'p>(chunk: &'p mut Chunk, source: &'p str) -> Parser<'p> {
@@ -138,7 +136,7 @@ pub fn error_at(parser: &mut Parser, token: Token, message: &str) {
     parser.had_err = true;
 }
 
-pub fn consume<'p>(parser: &mut Parser, message: &str, t_type: TokenType) {
+pub fn consume(parser: &mut Parser, message: &str, t_type: TokenType) {
     if parser.current.token_type == t_type {
         advance(parser);
         return;
@@ -160,7 +158,7 @@ fn emit_byte(parser: &mut Parser, byte: u8) {
 }
 
 fn expression(parser: &mut Parser) {
-    parse_precedence(parser, Precedence::PRECsAssignment);
+    parse_precedence(parser, Precedence::Assignment);
 }
 
 fn emit_bytes(parser: &mut Parser, byte1: u8, byte2: u8) {
@@ -194,7 +192,7 @@ fn make_constant(parser: &mut Parser, value: Values) -> u8 {
     cons as u8
 }
 
-fn grouping<'p>(parser: &mut Parser) {
+fn grouping(parser: &mut Parser) {
     expression(parser);
     consume(parser, "Expect ')' after expression.", TokenType::TRr);
 }
@@ -226,9 +224,8 @@ fn unary(parser: &mut Parser) {
 
     expression(parser);
 
-    match optype {
-        TokenType::Tminus => emit_byte(parser, OpCode::OpNegate as u8),
-        _ => return,
+    if optype == TokenType::Tminus {
+        emit_byte(parser, OpCode::OpNegate as u8)
     }
 }
 
@@ -237,15 +234,15 @@ fn binary(parser: &mut Parser) {
     let rule = get_rules(optype);
 
     let next_rule = match rule.prec {
-        Precedence::PRECsNone => Precedence::PRECsAssignment,
-        Precedence::PRECsAssignment => Precedence::PRECsEq,
-        Precedence::PRECsEq => Precedence::PRECsComps,
-        Precedence::PRECsComps => Precedence::PRECsTerms,
-        Precedence::PRECsTerms => Precedence::PRECsFactors,
-        Precedence::PRECsFactors => Precedence::PRECsUnary,
-        Precedence::PRECsUnary => Precedence::PRECsCall,
-        Precedence::PRECsCall => Precedence::PRECsPrime,
-        Precedence::PRECsPrime => Precedence::PRECsPrime,
+        Precedence::None => Precedence::Assignment,
+        Precedence::Assignment => Precedence::Eq,
+        Precedence::Eq => Precedence::Comps,
+        Precedence::Comps => Precedence::Terms,
+        Precedence::Terms => Precedence::Factors,
+        Precedence::Factors => Precedence::Unary,
+        Precedence::Unary => Precedence::Call,
+        Precedence::Call => Precedence::Prime,
+        Precedence::Prime => Precedence::Prime,
     };
 
     parse_precedence(parser, next_rule);
@@ -261,7 +258,7 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
     &RULES[t_type as usize]
 }
 
-pub fn compile<'p>(parser: &mut Parser) -> bool {
+pub fn compile(parser: &mut Parser) -> bool {
     advance(parser);
 
     loop {
@@ -280,6 +277,14 @@ pub fn compile<'p>(parser: &mut Parser) -> bool {
             advance(parser);
         }
     }
+
+    #[cfg(feature = "dbte")]
+    {
+        if parser.had_err {
+            parser.chunk.disassembler("code");
+        }
+    }
+
     consume(parser, "Expect end of expression.", TokenType::TEof);
     !parser.had_err
 }

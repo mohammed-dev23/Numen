@@ -157,7 +157,7 @@ impl<'s> Scanner<'s> {
             }
             return self.generate_token(TokenType::Tfloat);
         }
-        return self.generate_token(TokenType::Tint);
+        self.generate_token(TokenType::Tint)
     }
 
     fn identifier(&mut self) -> Token {
