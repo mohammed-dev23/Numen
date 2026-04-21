@@ -27,7 +27,9 @@ const NONE_RULE: ParseRules = ParseRules {
     prec: Precedence::None,
 };
 
-static RULES: [ParseRules; 11] = [
+// the index here does not start from 0 as the scanner TokenType enum does
+// it starts from one so be carful with that
+static RULES: [ParseRules; 17] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -59,6 +61,32 @@ static RULES: [ParseRules; 11] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
+    ParseRules {
+        prefix: Some(binary),
+        infix: Some(binary),
+        prec: Precedence::Factors,
+    },
+    ParseRules {
+        prefix: Some(binary),
+        infix: Some(binary),
+        prec: Precedence::Factors,
+    },
+    ParseRules {
+        prefix: Some(binary),
+        infix: Some(binary),
+        prec: Precedence::Factors,
+    },
+    ParseRules {
+        prefix: Some(binary),
+        infix: Some(binary),
+        prec: Precedence::Factors,
+    },
+    ParseRules {
+        prefix: Some(binary),
+        infix: Some(binary),
+        prec: Precedence::Factors,
+    },
 ];
 #[derive(Debug, Clone, Copy)]
 pub enum Precedence {
@@ -67,7 +95,7 @@ pub enum Precedence {
     Eq,         // == !=
     Comps,      // > < >= <=
     Terms,      // - +
-    Factors,    // * /
+    Factors,    // * / % ^ //
     Unary,      // ! -
     Call,       // . ()
     Prime,
@@ -222,7 +250,7 @@ fn parse_precedence(parser: &mut Parser, prec: Precedence) {
 fn unary(parser: &mut Parser) {
     let optype = parser.previous.token_type;
 
-    expression(parser);
+    parse_precedence(parser, Precedence::Unary);
 
     if optype == TokenType::Tminus {
         emit_byte(parser, OpCode::OpNegate as u8)
@@ -250,6 +278,11 @@ fn binary(parser: &mut Parser) {
     match optype {
         TokenType::TPlus => emit_byte(parser, OpCode::OpAdd as u8),
         TokenType::Tminus => emit_byte(parser, OpCode::OpSubtract as u8),
+        TokenType::TdivOp => emit_byte(parser, OpCode::OpDivide as u8),
+        TokenType::TmulOp => emit_byte(parser, OpCode::OpMultiply as u8),
+        TokenType::TmodOp => emit_byte(parser, OpCode::OpMod as u8),
+        TokenType::TpowOp => emit_byte(parser, OpCode::OpPow as u8),
+        TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u8),
         _ => unreachable!(),
     }
 }
@@ -271,11 +304,14 @@ pub fn compile(parser: &mut Parser) -> bool {
         }
 
         expression(parser);
-        end_compile(parser);
 
-        if parser.current.token_type == TokenType::TSemicolon {
-            advance(parser);
-        }
+        consume(
+            parser,
+            "Expect ';' after expression.",
+            TokenType::TSemicolon,
+        );
+
+        end_compile(parser);
     }
 
     #[cfg(feature = "dbte")]

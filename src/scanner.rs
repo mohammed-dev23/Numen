@@ -30,6 +30,11 @@ pub enum TokenType {
     TPrint,
     TEof,
     TErr,
+    TdivOp,
+    TmulOp,
+    TmodOp,
+    TpowOp,
+    TdivdivOp,
 }
 
 impl<'s> Scanner<'s> {
@@ -58,6 +63,16 @@ impl<'s> Scanner<'s> {
             '(' => self.generate_token(TokenType::TLr),
             ')' => self.generate_token(TokenType::TRr),
             '-' => self.generate_token(TokenType::Tminus),
+            '%' => self.generate_token(TokenType::TmodOp),
+            '*' => self.generate_token(TokenType::TmulOp),
+            '^' => self.generate_token(TokenType::TpowOp),
+            '/' => {
+                if self.match_tokens('/') {
+                    self.generate_token(TokenType::TdivdivOp)
+                } else {
+                    self.generate_token(TokenType::TdivOp)
+                }
+            }
             _ => self.err_token("Unexpected character."),
         }
     }
@@ -103,6 +118,22 @@ impl<'s> Scanner<'s> {
         self.current[1..].chars().next().unwrap_or('\0')
     }
 
+    fn match_tokens(&mut self, expected: char) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+
+        let char: Vec<char> = self.current.chars().collect();
+
+        if char[0] != expected {
+            return false;
+        }
+
+        self.current = &self.current[1..];
+
+        true
+    }
+
     fn unconsumable(&mut self) {
         loop {
             let c = self.peek();
@@ -116,11 +147,9 @@ impl<'s> Scanner<'s> {
                     self.advance();
                     continue;
                 }
-                '/' => {
-                    if self.peek_next() == '/' {
-                        while self.peek() != '\n' && !self.is_at_end() {
-                            self.advance();
-                        }
+                '#' => {
+                    while self.peek() != '\n' && !self.is_at_end() {
+                        self.advance();
                     }
                 }
                 _ => return,

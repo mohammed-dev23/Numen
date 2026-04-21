@@ -23,6 +23,7 @@ pub enum BinaryOp {
     Multiply,
     Mod,
     Pow,
+    DivideDivide,
 }
 
 pub enum UnaryOp {
@@ -201,6 +202,11 @@ impl VM {
                     continue;
                 }
 
+                i if i == OpCode::OpDivideDivide as u8 => {
+                    self.binary_op(BinaryOp::DivideDivide);
+                    continue;
+                }
+
                 _ => {
                     println!("! InterpretCompileErr !");
                     return InterpretResult::InterpretCompileErr;
@@ -232,6 +238,9 @@ impl VM {
                 BinaryOp::Multiply => self.stack.push(Values::Int(x * y)),
                 BinaryOp::Mod => self.stack.push(Values::Int(x % y)),
                 BinaryOp::Pow => self.stack.push(Values::Int(x.pow(y as u32))),
+                BinaryOp::DivideDivide => self
+                    .stack
+                    .push(Values::Int(((x / y) as f64).floor() as i64)),
             },
             (Values::Float(x), Values::Float(y)) => match op {
                 BinaryOp::Add => self.stack.push(Values::Float(x + y)),
@@ -240,6 +249,7 @@ impl VM {
                 BinaryOp::Multiply => self.stack.push(Values::Float(x * y)),
                 BinaryOp::Mod => self.stack.push(Values::Float(x % y)),
                 BinaryOp::Pow => self.stack.push(Values::Float(x.powf(y))),
+                BinaryOp::DivideDivide => self.stack.push(Values::Float((x / y).floor())),
             },
             (Values::Float(x), Values::Int(y)) => match op {
                 BinaryOp::Add => self.stack.push(Values::Float(x + y as f64)),
@@ -248,14 +258,16 @@ impl VM {
                 BinaryOp::Multiply => self.stack.push(Values::Float(x * y as f64)),
                 BinaryOp::Mod => self.stack.push(Values::Float(x % y as f64)),
                 BinaryOp::Pow => self.stack.push(Values::Float(x.powf(y as f64))),
+                BinaryOp::DivideDivide => self.stack.push(Values::Float((x / y as f64).floor())),
             },
-            (Values::Int(c), Values::Float(b)) => match op {
-                BinaryOp::Add => self.stack.push(Values::Float(c as f64 + b)),
-                BinaryOp::Subtract => self.stack.push(Values::Float(c as f64 - b)),
-                BinaryOp::Divide => self.stack.push(Values::Float(c as f64 / b)),
-                BinaryOp::Multiply => self.stack.push(Values::Float(c as f64 * b)),
-                BinaryOp::Mod => self.stack.push(Values::Float(c as f64 % b)),
-                BinaryOp::Pow => self.stack.push(Values::Float((c as f64).powf(b))),
+            (Values::Int(x), Values::Float(y)) => match op {
+                BinaryOp::Add => self.stack.push(Values::Float(x as f64 + y)),
+                BinaryOp::Subtract => self.stack.push(Values::Float(x as f64 - y)),
+                BinaryOp::Divide => self.stack.push(Values::Float(x as f64 / y)),
+                BinaryOp::Multiply => self.stack.push(Values::Float(x as f64 * y)),
+                BinaryOp::Mod => self.stack.push(Values::Float(x as f64 % y)),
+                BinaryOp::Pow => self.stack.push(Values::Float((x as f64).powf(y))),
+                BinaryOp::DivideDivide => self.stack.push(Values::Float((x as f64 / y).floor())),
             },
 
             _ => panic!("unsupported operation"),

@@ -1,4 +1,8 @@
-8 + 9;
-9 + 1;
-10 + 1;
-15 - 1;
+# this is a comment in numen
+# every thing is working well!
+
+8 + 9 / 1 * 1 + 10^2;
+9 + 1 * 1 / 2;
+10 + 1 - 8 % 6;
+-15 - 1.9 * (8 + 9);
+100 // 20.7;

@@ -22,6 +22,7 @@ pub enum OpCode {
     OpDivide,
     OpMod,
     OpPow,
+    OpDivideDivide,
 
     //values for ComparisonOp
     OpEq,
@@ -152,6 +153,9 @@ impl Chunk {
             i if i == OpCode::OpLt as u8 => Self::simple_instruction(offset, "OPLT".to_string()),
             i if i == OpCode::OpGte as u8 => Self::simple_instruction(offset, "OPGTE".to_string()),
             i if i == OpCode::OpLte as u8 => Self::simple_instruction(offset, "OPLTE".to_string()),
+            i if i == OpCode::OpDivideDivide as u8 => {
+                Self::simple_instruction(offset, "OPDIVDIV".to_string())
+            }
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1
