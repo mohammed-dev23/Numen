@@ -29,7 +29,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 17] = [
+static RULES: [ParseRules; 18] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -61,7 +61,6 @@ static RULES: [ParseRules; 17] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
-    NONE_RULE,
     ParseRules {
         prefix: Some(binary),
         infix: Some(binary),
@@ -86,6 +85,16 @@ static RULES: [ParseRules; 17] = [
         prefix: Some(binary),
         infix: Some(binary),
         prec: Precedence::Factors,
+    },
+    ParseRules {
+        prefix: Some(bool_ture),
+        infix: None,
+        prec: Precedence::None,
+    },
+    ParseRules {
+        prefix: Some(bool_false),
+        infix: None,
+        prec: Precedence::None,
     },
 ];
 #[derive(Debug, Clone, Copy)]
@@ -204,6 +213,14 @@ fn float_num(parser: &mut Parser) {
     emit_constant(parser, Values::Float(value));
 }
 
+fn bool_ture(parser: &mut Parser) {
+    emit_constant(parser, Values::Bool(true));
+}
+
+fn bool_false(parser: &mut Parser) {
+    emit_constant(parser, Values::Bool(false));
+}
+
 fn emit_constant(parser: &mut Parser, value: Values) {
     let make = make_constant(parser, value);
     emit_bytes(parser, OpCode::OpC as u8, make);
@@ -283,6 +300,8 @@ fn binary(parser: &mut Parser) {
         TokenType::TmodOp => emit_byte(parser, OpCode::OpMod as u8),
         TokenType::TpowOp => emit_byte(parser, OpCode::OpPow as u8),
         TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u8),
+        TokenType::Ttrue => emit_byte(parser, OpCode::OpTrue as u8),
+        TokenType::Tfalse => emit_byte(parser, OpCode::OpFalse as u8),
         _ => unreachable!(),
     }
 }

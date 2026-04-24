@@ -31,6 +31,8 @@ pub enum OpCode {
     OpGt,
     OpGte,
     OpLte,
+    OpTrue,
+    OpFalse,
 }
 
 #[derive(Debug, Clone)]
@@ -42,10 +44,63 @@ pub struct Chunk {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Values {
-    #[allow(warnings)]
     Float(f64),
     Int(i64),
     Bool(bool),
+    None,
+}
+
+#[allow(warnings)]
+//nothing is used here yet but maybe in the future
+impl Values {
+    pub fn bool_val(bool: bool) -> Self {
+        Self::Bool(bool)
+    }
+
+    pub fn int_val(int: i64) -> Self {
+        Self::Int(int)
+    }
+
+    pub fn float_val(float: f64) -> Self {
+        Self::Float(float)
+    }
+
+    pub fn none() -> Self {
+        Self::None
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Values::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Values::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Values::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        self.as_bool().is_some()
+    }
+
+    pub fn is_int(&self) -> bool {
+        self.as_int().is_some()
+    }
+
+    pub fn is_float(&self) -> bool {
+        self.as_float().is_some()
+    }
 }
 
 impl Neg for Values {
@@ -56,6 +111,7 @@ impl Neg for Values {
             Values::Float(d) => Values::Float(-d),
             Values::Int(d) => Values::Int(-d),
             Values::Bool(b) => Values::Bool(b),
+            _ => Values::None,
         }
     }
 }
@@ -155,6 +211,12 @@ impl Chunk {
             i if i == OpCode::OpLte as u8 => Self::simple_instruction(offset, "OPLTE".to_string()),
             i if i == OpCode::OpDivideDivide as u8 => {
                 Self::simple_instruction(offset, "OPDIVDIV".to_string())
+            }
+            i if i == OpCode::OpTrue as u8 => {
+                Self::simple_instruction(offset, "OPTRUE".to_string())
+            }
+            i if i == OpCode::OpFalse as u8 => {
+                Self::simple_instruction(offset, "OPFALSE".to_string())
             }
             _ => {
                 println!("Unknown opcode {}", instruction);

@@ -27,7 +27,6 @@ pub enum TokenType {
     Tfloat,
     TStr,
     TId,
-    TPrint,
     TEof,
     TErr,
     TdivOp,
@@ -35,6 +34,8 @@ pub enum TokenType {
     TmodOp,
     TpowOp,
     TdivdivOp,
+    Ttrue,
+    Tfalse,
 }
 
 impl<'s> Scanner<'s> {
@@ -196,11 +197,13 @@ impl<'s> Scanner<'s> {
 
         let text = &self.start[..self.start.len() - self.current.len()];
 
-        let keywords: HashMap<&str, TokenType> = HashMap::from([("print", TokenType::TPrint)]);
+        let keywords: HashMap<&str, TokenType> =
+            HashMap::from([("true", TokenType::Ttrue), ("false", TokenType::Tfalse)]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
         self.generate_token(match *t_type {
-            TokenType::TPrint => TokenType::TPrint,
+            TokenType::Ttrue => TokenType::Ttrue,
+            TokenType::Tfalse => TokenType::Tfalse,
             _ => TokenType::TId,
         })
     }

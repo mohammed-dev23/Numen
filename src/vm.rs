@@ -13,7 +13,7 @@ pub struct VM {
 pub enum InterpretResult {
     InterpretOK,
     InterpretCompileErr,
-    _InterpretRunTimeErr,
+    InterpretRunTimeErr,
 }
 
 pub enum BinaryOp {
@@ -103,108 +103,158 @@ impl VM {
                 }
 
                 i if i == OpCode::OpAdd as u8 => {
-                    self.binary_op(BinaryOp::Add);
+                    if !self.binary_op(BinaryOp::Add) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpSubtract as u8 => {
-                    self.binary_op(BinaryOp::Subtract);
+                    if !self.binary_op(BinaryOp::Subtract) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpDivide as u8 => {
-                    self.binary_op(BinaryOp::Divide);
+                    if !self.binary_op(BinaryOp::Divide) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpMultiply as u8 => {
-                    self.binary_op(BinaryOp::Multiply);
+                    if !self.binary_op(BinaryOp::Multiply) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpMod as u8 => {
-                    self.binary_op(BinaryOp::Mod);
+                    if !self.binary_op(BinaryOp::Mod) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpPow as u8 => {
-                    self.binary_op(BinaryOp::Pow);
+                    if !self.binary_op(BinaryOp::Pow) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpNegate as u8 => {
-                    self.unary_op(UnaryOp::Negate);
+                    if !self.unary_op(UnaryOp::Negate) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpSqrt as u8 => {
-                    self.unary_op(UnaryOp::Sqrt);
+                    if !self.unary_op(UnaryOp::Sqrt) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpAbs as u8 => {
-                    self.unary_op(UnaryOp::Abs);
+                    if !self.unary_op(UnaryOp::Abs) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpFloor as u8 => {
-                    self.unary_op(UnaryOp::Floor);
+                    if !self.unary_op(UnaryOp::Floor) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpCeil as u8 => {
-                    self.unary_op(UnaryOp::Ceil);
+                    if !self.unary_op(UnaryOp::Ceil) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpSin as u8 => {
-                    self.unary_op(UnaryOp::Sin);
+                    if !self.unary_op(UnaryOp::Sin) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpCos as u8 => {
-                    self.unary_op(UnaryOp::Cos);
+                    if !self.unary_op(UnaryOp::Cos) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpTan as u8 => {
-                    self.unary_op(UnaryOp::Tan);
+                    if !self.unary_op(UnaryOp::Tan) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpEq as u8 => {
-                    self.comparison_op(ComparisonOp::Eq);
+                    if !self.comparison_op(ComparisonOp::Eq) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpNotEq as u8 => {
-                    self.comparison_op(ComparisonOp::NotEq);
+                    if !self.comparison_op(ComparisonOp::NotEq) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpGt as u8 => {
-                    self.comparison_op(ComparisonOp::Gt);
+                    if !self.comparison_op(ComparisonOp::Gt) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpLt as u8 => {
-                    self.comparison_op(ComparisonOp::Lt);
+                    if !self.comparison_op(ComparisonOp::Lt) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpGte as u8 => {
-                    self.comparison_op(ComparisonOp::Gte);
+                    if !self.comparison_op(ComparisonOp::Gte) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpLte as u8 => {
-                    self.comparison_op(ComparisonOp::Lte);
+                    if !self.comparison_op(ComparisonOp::Lte) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
                 i if i == OpCode::OpDivideDivide as u8 => {
-                    self.binary_op(BinaryOp::DivideDivide);
+                    if !self.binary_op(BinaryOp::DivideDivide) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
+                }
+
+                i if i == OpCode::OpTrue as u8 => {
+                    self.stack.push(Values::Bool(true));
+                }
+
+                i if i == OpCode::OpFalse as u8 => {
+                    self.stack.push(Values::Bool(false));
                 }
 
                 _ => {
@@ -226,7 +276,17 @@ impl VM {
         self.chunk.constant.values[index]
     }
 
-    fn binary_op(&mut self, op: BinaryOp) {
+    fn runtime_errors(&mut self, msg: &str) {
+        eprintln!("{}", msg);
+
+        let instruction = self.ip - 1;
+        let line = self.chunk.line[instruction];
+        eprintln!("[line {}] in script", line);
+
+        self.stack.clear();
+    }
+
+    fn binary_op(&mut self, op: BinaryOp) -> bool {
         let y = self.stack.pop().unwrap();
         let x = self.stack.pop().unwrap();
 
@@ -269,12 +329,15 @@ impl VM {
                 BinaryOp::Pow => self.stack.push(Values::Float((x as f64).powf(y))),
                 BinaryOp::DivideDivide => self.stack.push(Values::Float((x as f64 / y).floor())),
             },
-
-            _ => panic!("unsupported operation"),
+            _ => {
+                self.runtime_errors("Operands must be numbers.");
+                return false;
+            }
         }
+        true
     }
 
-    fn unary_op(&mut self, unary_op: UnaryOp) {
+    fn unary_op(&mut self, unary_op: UnaryOp) -> bool {
         let x = self.stack.pop().unwrap();
 
         match x {
@@ -298,12 +361,15 @@ impl VM {
                 UnaryOp::Cos => self.stack.push(Values::Float(x.cos())),
                 UnaryOp::Tan => self.stack.push(Values::Float(x.tan())),
             },
-
-            _ => panic!("unsupported operation"),
+            _ => {
+                self.runtime_errors("Operand must be a number.");
+                return false;
+            }
         }
+        true
     }
 
-    fn comparison_op(&mut self, op: ComparisonOp) {
+    fn comparison_op(&mut self, op: ComparisonOp) -> bool {
         let y = self.stack.pop().unwrap();
         let x = self.stack.pop().unwrap();
 
@@ -340,8 +406,11 @@ impl VM {
                 ComparisonOp::Gte => self.stack.push(Values::Bool(x >= y as f64)),
                 ComparisonOp::Lte => self.stack.push(Values::Bool(x <= y as f64)),
             },
-
-            _ => panic!("unsupported operation"),
+            _ => {
+                self.runtime_errors("Operands must be numbers.");
+                return false;
+            }
         }
+        true
     }
 }
