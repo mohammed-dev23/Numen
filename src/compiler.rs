@@ -29,7 +29,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 18] = [
+static RULES: [ParseRules; 26] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -57,7 +57,11 @@ static RULES: [ParseRules; 18] = [
         infix: None,
         prec: Precedence::None,
     },
-    NONE_RULE,
+    ParseRules {
+        prefix: Some(strings),
+        infix: None,
+        prec: Precedence::None,
+    },
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
@@ -95,6 +99,42 @@ static RULES: [ParseRules; 18] = [
         prefix: Some(bool_false),
         infix: None,
         prec: Precedence::None,
+    },
+    ParseRules {
+        prefix: Some(unary),
+        infix: None,
+        prec: Precedence::Unary,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Eq,
+    },
+    NONE_RULE,
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Eq,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Comps,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Comps,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Comps,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Comps,
     },
 ];
 #[derive(Debug, Clone, Copy)]
@@ -213,6 +253,12 @@ fn float_num(parser: &mut Parser) {
     emit_constant(parser, Values::Float(value));
 }
 
+fn strings(parser: &mut Parser) {
+    let raw_value = &parser.previous.start;
+    let value = raw_value[1..raw_value.len() - 1].to_string(); // strips the \str\
+    emit_constant(parser, Values::Str(value));
+}
+
 fn bool_ture(parser: &mut Parser) {
     emit_constant(parser, Values::Bool(true));
 }
@@ -269,8 +315,10 @@ fn unary(parser: &mut Parser) {
 
     parse_precedence(parser, Precedence::Unary);
 
-    if optype == TokenType::Tminus {
-        emit_byte(parser, OpCode::OpNegate as u8)
+    match optype {
+        TokenType::Tminus => emit_byte(parser, OpCode::OpNegate as u8),
+        TokenType::Tnot => emit_byte(parser, OpCode::OpNot as u8),
+        _ => error(parser, "unsupported operand."),
     }
 }
 
@@ -302,6 +350,12 @@ fn binary(parser: &mut Parser) {
         TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u8),
         TokenType::Ttrue => emit_byte(parser, OpCode::OpTrue as u8),
         TokenType::Tfalse => emit_byte(parser, OpCode::OpFalse as u8),
+        TokenType::Teqeq => emit_byte(parser, OpCode::OpEqEq as u8),
+        TokenType::TnotEq => emit_byte(parser, OpCode::OpNotEq as u8),
+        TokenType::Tgt => emit_byte(parser, OpCode::OpGt as u8),
+        TokenType::Tlt => emit_byte(parser, OpCode::OpLt as u8),
+        TokenType::Tgte => emit_byte(parser, OpCode::OpGte as u8),
+        TokenType::Tlte => emit_byte(parser, OpCode::OpLte as u8),
         _ => unreachable!(),
     }
 }

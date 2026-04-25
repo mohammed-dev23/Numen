@@ -1,4 +1,4 @@
-use std::ops::Neg;
+use std::{ops::Neg, u8};
 
 #[repr(u8)]
 pub enum OpCode {
@@ -14,6 +14,7 @@ pub enum OpCode {
     OpSin,
     OpCos,
     OpTan,
+    OpNot,
 
     //values for BinaryOp
     OpAdd,
@@ -25,6 +26,7 @@ pub enum OpCode {
     OpDivideDivide,
 
     //values for ComparisonOp
+    OpEqEq,
     OpEq,
     OpNotEq,
     OpLt,
@@ -42,11 +44,12 @@ pub struct Chunk {
     pub line: Vec<usize>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Values {
     Float(f64),
     Int(i64),
     Bool(bool),
+    Str(String),
     None,
 }
 
@@ -201,7 +204,9 @@ impl Chunk {
             i if i == OpCode::OpSin as u8 => Self::simple_instruction(offset, "OPSAN".to_string()),
             i if i == OpCode::OpCos as u8 => Self::simple_instruction(offset, "OPCOS".to_string()),
             i if i == OpCode::OpTan as u8 => Self::simple_instruction(offset, "OPTAN".to_string()),
-            i if i == OpCode::OpEq as u8 => Self::simple_instruction(offset, "OPEQ".to_string()),
+            i if i == OpCode::OpEqEq as u8 => {
+                Self::simple_instruction(offset, "OPEQEQ".to_string())
+            }
             i if i == OpCode::OpNotEq as u8 => {
                 Self::simple_instruction(offset, "OPNOTEQ".to_string())
             }
@@ -218,6 +223,8 @@ impl Chunk {
             i if i == OpCode::OpFalse as u8 => {
                 Self::simple_instruction(offset, "OPFALSE".to_string())
             }
+            i if i == OpCode::OpNot as u8 => Self::simple_instruction(offset, "OPNOT".to_string()),
+            i if i == OpCode::OpEq as u8 => Self::simple_instruction(offset, "OPEQ".to_string()),
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1

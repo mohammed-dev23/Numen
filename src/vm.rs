@@ -35,10 +35,11 @@ pub enum UnaryOp {
     Sin,
     Cos,
     Tan,
+    Not,
 }
 
 pub enum ComparisonOp {
-    Eq,
+    EqEq,
     NotEq,
     Gt,
     Lt,
@@ -200,8 +201,8 @@ impl VM {
                     continue;
                 }
 
-                i if i == OpCode::OpEq as u8 => {
-                    if !self.comparison_op(ComparisonOp::Eq) {
+                i if i == OpCode::OpEqEq as u8 => {
+                    if !self.comparison_op(ComparisonOp::EqEq) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
@@ -257,6 +258,13 @@ impl VM {
                     self.stack.push(Values::Bool(false));
                 }
 
+                i if i == OpCode::OpNot as u8 => {
+                    if !self.unary_op(UnaryOp::Not) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
+                    continue;
+                }
+
                 _ => {
                     println!("! InterpretCompileErr !");
                     return InterpretResult::InterpretCompileErr;
@@ -273,7 +281,7 @@ impl VM {
 
     fn read_constant(&mut self) -> Values {
         let index = self.read_bytes() as usize;
-        self.chunk.constant.values[index]
+        self.chunk.constant.values[index].clone()
     }
 
     fn runtime_errors(&mut self, msg: &str) {
@@ -329,6 +337,13 @@ impl VM {
                 BinaryOp::Pow => self.stack.push(Values::Float((x as f64).powf(y))),
                 BinaryOp::DivideDivide => self.stack.push(Values::Float((x as f64 / y).floor())),
             },
+            (Values::Str(x), Values::Str(y)) => match op {
+                BinaryOp::Add => self.stack.push(Values::Str(x + &y)),
+                _ => {
+                    self.runtime_errors("Unsupported operation for strings.");
+                    return false;
+                }
+            },
             _ => {
                 self.runtime_errors("Operands must be numbers.");
                 return false;
@@ -350,6 +365,10 @@ impl VM {
                 UnaryOp::Sin => self.stack.push(Values::Float(f64::sin(x as f64))),
                 UnaryOp::Cos => self.stack.push(Values::Float(f64::cos(x as f64))),
                 UnaryOp::Tan => self.stack.push(Values::Float(f64::tan(x as f64))),
+                UnaryOp::Not => {
+                    self.runtime_errors("Operand must be a bool.");
+                    return false;
+                }
             },
             Values::Float(x) => match unary_op {
                 UnaryOp::Negate => self.stack.push(Values::Float(-x)),
@@ -360,6 +379,23 @@ impl VM {
                 UnaryOp::Sin => self.stack.push(Values::Float(x.sin())),
                 UnaryOp::Cos => self.stack.push(Values::Float(x.cos())),
                 UnaryOp::Tan => self.stack.push(Values::Float(x.tan())),
+                UnaryOp::Not => {
+                    self.runtime_errors("Operand must be a bool.");
+                    return false;
+                }
+            },
+            Values::Bool(x) => match unary_op {
+                UnaryOp::Not => {
+                    if x == true {
+                        self.stack.push(Values::Bool(false));
+                    } else {
+                        self.stack.push(Values::Bool(true));
+                    }
+                }
+                _ => {
+                    self.runtime_errors("Operand must be a bool.");
+                    return false;
+                }
             },
             _ => {
                 self.runtime_errors("Operand must be a number.");
@@ -375,7 +411,7 @@ impl VM {
 
         match (x, y) {
             (Values::Int(x), Values::Int(y)) => match op {
-                ComparisonOp::Eq => self.stack.push(Values::Bool(x == y)),
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x == y)),
                 ComparisonOp::NotEq => self.stack.push(Values::Bool(x != y)),
                 ComparisonOp::Gt => self.stack.push(Values::Bool(x > y)),
                 ComparisonOp::Lt => self.stack.push(Values::Bool(x < y)),
@@ -383,7 +419,7 @@ impl VM {
                 ComparisonOp::Lte => self.stack.push(Values::Bool(x <= y)),
             },
             (Values::Float(x), Values::Float(y)) => match op {
-                ComparisonOp::Eq => self.stack.push(Values::Bool(x == y)),
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x == y)),
                 ComparisonOp::NotEq => self.stack.push(Values::Bool(x != y)),
                 ComparisonOp::Gt => self.stack.push(Values::Bool(x > y)),
                 ComparisonOp::Lt => self.stack.push(Values::Bool(x < y)),
@@ -391,7 +427,7 @@ impl VM {
                 ComparisonOp::Lte => self.stack.push(Values::Bool(x <= y)),
             },
             (Values::Int(x), Values::Float(y)) => match op {
-                ComparisonOp::Eq => self.stack.push(Values::Bool(x as f64 == y)),
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x as f64 == y)),
                 ComparisonOp::NotEq => self.stack.push(Values::Bool(x as f64 != y)),
                 ComparisonOp::Gt => self.stack.push(Values::Bool(x as f64 > y)),
                 ComparisonOp::Lt => self.stack.push(Values::Bool((x as f64) < y)),
@@ -399,15 +435,31 @@ impl VM {
                 ComparisonOp::Lte => self.stack.push(Values::Bool(x as f64 <= y)),
             },
             (Values::Float(x), Values::Int(y)) => match op {
-                ComparisonOp::Eq => self.stack.push(Values::Bool(x == y as f64)),
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x == y as f64)),
                 ComparisonOp::NotEq => self.stack.push(Values::Bool(x != y as f64)),
                 ComparisonOp::Gt => self.stack.push(Values::Bool(x > y as f64)),
                 ComparisonOp::Lt => self.stack.push(Values::Bool(x < y as f64)),
                 ComparisonOp::Gte => self.stack.push(Values::Bool(x >= y as f64)),
                 ComparisonOp::Lte => self.stack.push(Values::Bool(x <= y as f64)),
             },
+            (Values::Bool(x), Values::Bool(y)) => match op {
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x == y)),
+                ComparisonOp::NotEq => self.stack.push(Values::Bool(x != y)),
+                _ => {
+                    self.runtime_errors("Unsupported compression operator");
+                    return false;
+                }
+            },
+            (Values::Str(x), Values::Str(y)) => match op {
+                ComparisonOp::EqEq => self.stack.push(Values::Bool(x == y)),
+                ComparisonOp::NotEq => self.stack.push(Values::Bool(x != y)),
+                _ => {
+                    self.runtime_errors("Unsupported compression operation for strings.");
+                    return false;
+                }
+            },
             _ => {
-                self.runtime_errors("Operands must be numbers.");
+                self.runtime_errors("Unsupported compression operation.");
                 return false;
             }
         }

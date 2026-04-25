@@ -36,6 +36,14 @@ pub enum TokenType {
     TdivdivOp,
     Ttrue,
     Tfalse,
+    Tnot,
+    Teqeq,
+    Teq,
+    TnotEq,
+    Tgt,
+    Tlt,
+    Tgte,
+    Tlte,
 }
 
 impl<'s> Scanner<'s> {
@@ -72,6 +80,34 @@ impl<'s> Scanner<'s> {
                     self.generate_token(TokenType::TdivdivOp)
                 } else {
                     self.generate_token(TokenType::TdivOp)
+                }
+            }
+            '=' => {
+                if self.match_tokens('=') {
+                    self.generate_token(TokenType::Teqeq)
+                } else {
+                    self.generate_token(TokenType::Teq)
+                }
+            }
+            '!' => {
+                if self.match_tokens('=') {
+                    self.generate_token(TokenType::TnotEq)
+                } else {
+                    self.generate_token(TokenType::Tnot)
+                }
+            }
+            '>' => {
+                if self.match_tokens('=') {
+                    self.generate_token(TokenType::Tgte)
+                } else {
+                    self.generate_token(TokenType::Tgt)
+                }
+            }
+            '<' => {
+                if self.match_tokens('=') {
+                    self.generate_token(TokenType::Tlte)
+                } else {
+                    self.generate_token(TokenType::Tlt)
                 }
             }
             _ => self.err_token("Unexpected character."),

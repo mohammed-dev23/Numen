@@ -9,3 +9,43 @@
 
 true;
 false;
+
+# its the not Op it will return false not true
+!true;
+# same as well but this return's true
+!false;
+
+# eq returns false
+1 == 2;
+
+# not eq returns true
+1 != 2;
+
+# gt returns false
+1 > 2;
+
+# lt returns true
+1 < 2;
+
+# lgt or eq return true
+1 >= 1;
+
+# lt or eq return false
+2 <= 2;
+
+# eq and not eq oprations for bools
+true == true;
+false != true;
+true != true;
+false != false;
+
+# strings now works!
+"stringss!";
+
+# stringss op
+"moh" + "ammed";
+
+# strings eq and not eq they both return book
+"book" != "nana";
+"book" == "book";
+"alone" != "alone";

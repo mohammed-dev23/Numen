@@ -8,6 +8,7 @@ use crate::{chunk::Chunk, vm::VM};
 mod chunk;
 mod compiler;
 mod scanner;
+mod table;
 mod vm;
 
 fn main() -> io::Result<()> {
