@@ -92,9 +92,7 @@ impl VM {
 
             match instruction {
                 i if i == OpCode::OpR as u8 => {
-                    let v = self.stack.pop().unwrap();
-                    println!(" {:?} ", v);
-                    continue;
+                    return InterpretResult::InterpretOK;
                 }
 
                 i if i == OpCode::OpC as u8 => {
@@ -262,6 +260,12 @@ impl VM {
                     if !self.unary_op(UnaryOp::Not) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
+                    continue;
+                }
+
+                i if i == OpCode::OpPrint as u8 => {
+                    let value = self.stack.pop().unwrap();
+                    println!("{}", value);
                     continue;
                 }
 

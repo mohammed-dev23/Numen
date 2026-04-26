@@ -1,51 +1,51 @@
 # this is a comment in numen
 # every thing is working well!
 
-8 + 9 / 1 * 1 + 10^2;
-9 + 1 * 1 / 2;
-10 + 1 - 8 % 6;
--15 - 1.9 * (8 + 9);
-100 // 20.7;
+print 8 + 9 / 1 * 1 + 10^2;
+print 9 + 1 * 1 / 2;
+print 10 + 1 - 8 % 6;
+print -15 - 1.9 * (8 + 9);
+print 100 // 20.7;
 
-true;
-false;
+print true;
+print false;
 
 # its the not Op it will return false not true
-!true;
+print !true;
 # same as well but this return's true
-!false;
+print !false;
 
 # eq returns false
-1 == 2;
+print 1 == 2;
 
 # not eq returns true
-1 != 2;
+print 1 != 2;
 
 # gt returns false
-1 > 2;
+print 1 > 2;
 
 # lt returns true
-1 < 2;
+print 1 < 2;
 
 # lgt or eq return true
-1 >= 1;
+print 1 >= 1;
 
 # lt or eq return false
-2 <= 2;
+print 2 <= 2;
 
 # eq and not eq oprations for bools
-true == true;
-false != true;
-true != true;
-false != false;
+print true == true;
+print false != true;
+print true != true;
+print false != false;
 
 # strings now works!
-"stringss!";
+print "stringss!";
 
 # stringss op
-"moh" + "ammed";
+print "moh" + "ammed";
 
 # strings eq and not eq they both return book
-"book" != "nana";
-"book" == "book";
-"alone" != "alone";
+print "book" != "nana";
+print "book" == "book";
+print "alone" != "alone";

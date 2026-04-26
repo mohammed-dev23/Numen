@@ -1,4 +1,8 @@
-use std::{ops::Neg, u8};
+use std::{
+    fmt::{self},
+    ops::Neg,
+    u8,
+};
 
 #[repr(u8)]
 pub enum OpCode {
@@ -35,6 +39,9 @@ pub enum OpCode {
     OpLte,
     OpTrue,
     OpFalse,
+
+    //statements
+    OpPrint,
 }
 
 #[derive(Debug, Clone)]
@@ -53,56 +60,15 @@ pub enum Values {
     None,
 }
 
-#[allow(warnings)]
-//nothing is used here yet but maybe in the future
-impl Values {
-    pub fn bool_val(bool: bool) -> Self {
-        Self::Bool(bool)
-    }
-
-    pub fn int_val(int: i64) -> Self {
-        Self::Int(int)
-    }
-
-    pub fn float_val(float: f64) -> Self {
-        Self::Float(float)
-    }
-
-    pub fn none() -> Self {
-        Self::None
-    }
-
-    pub fn as_bool(&self) -> Option<bool> {
+impl fmt::Display for Values {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Values::Bool(b) => Some(*b),
-            _ => None,
+            Self::Str(s) => write!(f, "{}", s),
+            Self::Bool(b) => write!(f, "{}", b),
+            Self::Int(i) => write!(f, "{}", i),
+            Self::Float(fnum) => write!(f, "{}", fnum),
+            _ => Err(fmt::Error::default()),
         }
-    }
-
-    pub fn as_int(&self) -> Option<i64> {
-        match self {
-            Values::Int(i) => Some(*i),
-            _ => None,
-        }
-    }
-
-    pub fn as_float(&self) -> Option<f64> {
-        match self {
-            Values::Float(f) => Some(*f),
-            _ => None,
-        }
-    }
-
-    pub fn is_bool(&self) -> bool {
-        self.as_bool().is_some()
-    }
-
-    pub fn is_int(&self) -> bool {
-        self.as_int().is_some()
-    }
-
-    pub fn is_float(&self) -> bool {
-        self.as_float().is_some()
     }
 }
 
@@ -225,6 +191,9 @@ impl Chunk {
             }
             i if i == OpCode::OpNot as u8 => Self::simple_instruction(offset, "OPNOT".to_string()),
             i if i == OpCode::OpEq as u8 => Self::simple_instruction(offset, "OPEQ".to_string()),
+            i if i == OpCode::OpPrint as u8 => {
+                Self::simple_instruction(offset, "OPPRINT".to_string())
+            }
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1

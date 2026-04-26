@@ -44,6 +44,7 @@ pub enum TokenType {
     Tlt,
     Tgte,
     Tlte,
+    Tprint,
 }
 
 impl<'s> Scanner<'s> {
@@ -233,13 +234,17 @@ impl<'s> Scanner<'s> {
 
         let text = &self.start[..self.start.len() - self.current.len()];
 
-        let keywords: HashMap<&str, TokenType> =
-            HashMap::from([("true", TokenType::Ttrue), ("false", TokenType::Tfalse)]);
+        let keywords: HashMap<&str, TokenType> = HashMap::from([
+            ("true", TokenType::Ttrue),
+            ("false", TokenType::Tfalse),
+            ("print", TokenType::Tprint),
+        ]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
         self.generate_token(match *t_type {
             TokenType::Ttrue => TokenType::Ttrue,
             TokenType::Tfalse => TokenType::Tfalse,
+            TokenType::Tprint => TokenType::Tprint,
             _ => TokenType::TId,
         })
     }

@@ -29,7 +29,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 26] = [
+static RULES: [ParseRules; 27] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -136,6 +136,7 @@ static RULES: [ParseRules; 26] = [
         infix: Some(binary),
         prec: Precedence::Comps,
     },
+    NONE_RULE,
 ];
 #[derive(Debug, Clone, Copy)]
 pub enum Precedence {
@@ -275,7 +276,7 @@ fn emit_constant(parser: &mut Parser, value: Values) {
 fn make_constant(parser: &mut Parser, value: Values) -> u8 {
     let cons = parser.chunk.add_constant(value);
 
-    if cons as u8 > u8::MAX {
+    if cons > u8::MAX as usize {
         error(parser, "Too many constants in one chunk.");
         return 0;
     }
@@ -364,36 +365,49 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
     &RULES[t_type as usize]
 }
 
+fn declaration(parser: &mut Parser) {
+    statement(parser);
+}
+
+fn statement(parser: &mut Parser) {
+    if match_tokens(parser, TokenType::Tprint) {
+        print_statement(parser);
+    }
+}
+
+fn print_statement(parser: &mut Parser) {
+    expression(parser);
+    consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
+    emit_byte(parser, OpCode::OpPrint as u8);
+}
+
+fn match_tokens(parser: &mut Parser, t_type: TokenType) -> bool {
+    if !check(parser, t_type) {
+        return false;
+    }
+    advance(parser);
+    true
+}
+
+fn check(parser: &mut Parser, t_type: TokenType) -> bool {
+    parser.current.token_type == t_type
+}
+
 pub fn compile(parser: &mut Parser) -> bool {
     advance(parser);
 
-    loop {
-        while parser.current.token_type == TokenType::TSemicolon {
-            advance(parser);
-        }
-
-        if parser.current.token_type == TokenType::TEof {
-            break;
-        }
-
-        expression(parser);
-
-        consume(
-            parser,
-            "Expect ';' after expression.",
-            TokenType::TSemicolon,
-        );
-
-        end_compile(parser);
+    while !match_tokens(parser, TokenType::TEof) {
+        declaration(parser);
     }
+
+    end_compile(parser);
 
     #[cfg(feature = "dbte")]
     {
-        if parser.had_err {
+        if !parser.had_err {
             parser.chunk.disassembler("code");
         }
     }
 
-    consume(parser, "Expect end of expression.", TokenType::TEof);
     !parser.had_err
 }
