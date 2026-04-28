@@ -1,6 +1,7 @@
 use std::{
     fmt::{self},
     ops::Neg,
+    rc::Rc,
     u8,
 };
 
@@ -8,6 +9,10 @@ use std::{
 pub enum OpCode {
     OpR,
     OpC,
+    OpPop,
+    OpDefGlobal,
+    OpGetGlobal,
+    OpSetGlobal,
 
     //values for UnaryOp
     OpNegate,
@@ -37,8 +42,6 @@ pub enum OpCode {
     OpGt,
     OpGte,
     OpLte,
-    OpTrue,
-    OpFalse,
 
     //statements
     OpPrint,
@@ -56,7 +59,7 @@ pub enum Values {
     Float(f64),
     Int(i64),
     Bool(bool),
-    Str(String),
+    Str(Rc<str>),
     None,
 }
 
@@ -183,16 +186,20 @@ impl Chunk {
             i if i == OpCode::OpDivideDivide as u8 => {
                 Self::simple_instruction(offset, "OPDIVDIV".to_string())
             }
-            i if i == OpCode::OpTrue as u8 => {
-                Self::simple_instruction(offset, "OPTRUE".to_string())
-            }
-            i if i == OpCode::OpFalse as u8 => {
-                Self::simple_instruction(offset, "OPFALSE".to_string())
-            }
             i if i == OpCode::OpNot as u8 => Self::simple_instruction(offset, "OPNOT".to_string()),
             i if i == OpCode::OpEq as u8 => Self::simple_instruction(offset, "OPEQ".to_string()),
             i if i == OpCode::OpPrint as u8 => {
                 Self::simple_instruction(offset, "OPPRINT".to_string())
+            }
+            i if i == OpCode::OpPop as u8 => Self::simple_instruction(offset, "OPPOP".to_string()),
+            i if i == OpCode::OpDefGlobal as u8 => {
+                Self::constant_instruction(self, "OPDEFGLOBAL:".to_string(), offset)
+            }
+            i if i == OpCode::OpGetGlobal as u8 => {
+                Self::constant_instruction(self, "OPGETGLOBAL".to_string(), offset)
+            }
+            i if i == OpCode::OpSetGlobal as u8 => {
+                Self::constant_instruction(self, "OPSETGLOBAL".to_string(), offset)
             }
             _ => {
                 println!("Unknown opcode {}", instruction);

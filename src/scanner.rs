@@ -45,6 +45,7 @@ pub enum TokenType {
     Tgte,
     Tlte,
     Tprint,
+    Tmake,
 }
 
 impl<'s> Scanner<'s> {
@@ -238,6 +239,7 @@ impl<'s> Scanner<'s> {
             ("true", TokenType::Ttrue),
             ("false", TokenType::Tfalse),
             ("print", TokenType::Tprint),
+            ("make", TokenType::Tmake),
         ]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
@@ -245,6 +247,7 @@ impl<'s> Scanner<'s> {
             TokenType::Ttrue => TokenType::Ttrue,
             TokenType::Tfalse => TokenType::Tfalse,
             TokenType::Tprint => TokenType::Tprint,
+            TokenType::Tmake => TokenType::Tmake,
             _ => TokenType::TId,
         })
     }

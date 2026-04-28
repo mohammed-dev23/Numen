@@ -19,7 +19,7 @@ pub struct ParseRules {
     pub prec: Precedence,
 }
 
-pub type ParseFn = fn(&mut Parser);
+pub type ParseFn = fn(&mut Parser, can_assign: bool);
 
 const NONE_RULE: ParseRules = ParseRules {
     prefix: None,
@@ -29,7 +29,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 27] = [
+static RULES: [ParseRules; 28] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -62,7 +62,11 @@ static RULES: [ParseRules; 27] = [
         infix: None,
         prec: Precedence::None,
     },
-    NONE_RULE,
+    ParseRules {
+        prefix: Some(variable),
+        infix: None,
+        prec: Precedence::None,
+    },
     NONE_RULE,
     NONE_RULE,
     ParseRules {
@@ -137,8 +141,9 @@ static RULES: [ParseRules; 27] = [
         prec: Precedence::Comps,
     },
     NONE_RULE,
+    NONE_RULE,
 ];
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     None,
     Assignment, // =
@@ -244,36 +249,51 @@ fn emit_bytes(parser: &mut Parser, byte1: u8, byte2: u8) {
     emit_byte(parser, byte2);
 }
 
-fn int_num(parser: &mut Parser) {
+fn int_num(parser: &mut Parser, _can_assign: bool) {
     let value = parser.previous.start.trim().parse::<i64>().unwrap();
     emit_constant(parser, Values::Int(value));
 }
 
-fn float_num(parser: &mut Parser) {
+fn float_num(parser: &mut Parser, _can_assign: bool) {
     let value = parser.previous.start.trim().parse::<f64>().unwrap();
     emit_constant(parser, Values::Float(value));
 }
 
-fn strings(parser: &mut Parser) {
+fn strings<'p>(parser: &mut Parser<'p>, _can_assign: bool) {
     let raw_value = &parser.previous.start;
-    let value = raw_value[1..raw_value.len() - 1].to_string(); // strips the \str\
-    emit_constant(parser, Values::Str(value));
+    let value = Values::Str(raw_value[1..raw_value.len() - 1].into()); // strips the \str\
+    emit_constant(parser, value);
 }
 
-fn bool_ture(parser: &mut Parser) {
+fn bool_ture(parser: &mut Parser, _can_assign: bool) {
     emit_constant(parser, Values::Bool(true));
 }
 
-fn bool_false(parser: &mut Parser) {
+fn bool_false(parser: &mut Parser, _can_assign: bool) {
     emit_constant(parser, Values::Bool(false));
 }
 
-fn emit_constant(parser: &mut Parser, value: Values) {
+fn variable(parser: &mut Parser, can_assign: bool) {
+    named_variable(parser, parser.previous.clone(), can_assign);
+}
+
+fn named_variable(parser: &mut Parser, name: Token, can_assign: bool) {
+    let arg = ider_constant(parser, name);
+
+    if can_assign && match_tokens(parser, TokenType::Teq) {
+        expression(parser);
+        emit_bytes(parser, OpCode::OpSetGlobal as u8, arg);
+    } else {
+        emit_bytes(parser, OpCode::OpGetGlobal as u8, arg);
+    }
+}
+
+fn emit_constant<'p>(parser: &mut Parser<'p>, value: Values) {
     let make = make_constant(parser, value);
     emit_bytes(parser, OpCode::OpC as u8, make);
 }
 
-fn make_constant(parser: &mut Parser, value: Values) -> u8 {
+fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u8 {
     let cons = parser.chunk.add_constant(value);
 
     if cons > u8::MAX as usize {
@@ -284,7 +304,7 @@ fn make_constant(parser: &mut Parser, value: Values) -> u8 {
     cons as u8
 }
 
-fn grouping(parser: &mut Parser) {
+fn grouping(parser: &mut Parser, _can_assign: bool) {
     expression(parser);
     consume(parser, "Expect ')' after expression.", TokenType::TRr);
 }
@@ -295,7 +315,8 @@ fn parse_precedence(parser: &mut Parser, prec: Precedence) {
     let prefix_rules = get_rules(parser.previous.token_type).prefix;
 
     if let Some(p_rules) = prefix_rules {
-        p_rules(parser);
+        let can_assign = prec <= Precedence::Assignment;
+        p_rules(parser, can_assign);
     } else {
         error(parser, "Expect expression.");
         return;
@@ -306,12 +327,17 @@ fn parse_precedence(parser: &mut Parser, prec: Precedence) {
         let infix_rules = get_rules(parser.previous.token_type).infix;
 
         if let Some(i_rules) = infix_rules {
-            i_rules(parser)
+            let can_assign = prec <= Precedence::Assignment;
+            i_rules(parser, can_assign)
         }
+    }
+    let can_assign = prec <= Precedence::Assignment;
+    if can_assign && match_tokens(parser, TokenType::Teq) {
+        error(parser, "Invalid assignment target.");
     }
 }
 
-fn unary(parser: &mut Parser) {
+fn unary(parser: &mut Parser, _can_assign: bool) {
     let optype = parser.previous.token_type;
 
     parse_precedence(parser, Precedence::Unary);
@@ -323,7 +349,7 @@ fn unary(parser: &mut Parser) {
     }
 }
 
-fn binary(parser: &mut Parser) {
+fn binary(parser: &mut Parser, _can_assign: bool) {
     let optype = parser.previous.token_type;
     let rule = get_rules(optype);
 
@@ -349,8 +375,6 @@ fn binary(parser: &mut Parser) {
         TokenType::TmodOp => emit_byte(parser, OpCode::OpMod as u8),
         TokenType::TpowOp => emit_byte(parser, OpCode::OpPow as u8),
         TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u8),
-        TokenType::Ttrue => emit_byte(parser, OpCode::OpTrue as u8),
-        TokenType::Tfalse => emit_byte(parser, OpCode::OpFalse as u8),
         TokenType::Teqeq => emit_byte(parser, OpCode::OpEqEq as u8),
         TokenType::TnotEq => emit_byte(parser, OpCode::OpNotEq as u8),
         TokenType::Tgt => emit_byte(parser, OpCode::OpGt as u8),
@@ -366,12 +390,22 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
 }
 
 fn declaration(parser: &mut Parser) {
-    statement(parser);
+    if match_tokens(parser, TokenType::Tmake) {
+        var_declaration(parser);
+    } else {
+        statement(parser);
+    }
+
+    if parser.panic_mode {
+        sync(parser);
+    }
 }
 
 fn statement(parser: &mut Parser) {
     if match_tokens(parser, TokenType::Tprint) {
         print_statement(parser);
+    } else {
+        expression_statement(parser);
     }
 }
 
@@ -379,6 +413,42 @@ fn print_statement(parser: &mut Parser) {
     expression(parser);
     consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
     emit_byte(parser, OpCode::OpPrint as u8);
+}
+
+fn var_declaration(parser: &mut Parser) {
+    let global = parse_var(parser, "Expect variable name.");
+
+    if match_tokens(parser, TokenType::Teq) {
+        expression(parser);
+    } else {
+        error(parser, "Expect '=' after variable name.");
+    }
+    consume(
+        parser,
+        "Expect ';' after variable declaration.",
+        TokenType::TSemicolon,
+    );
+    define_var(parser, global);
+}
+
+fn define_var(parser: &mut Parser, global: u8) {
+    emit_bytes(parser, OpCode::OpDefGlobal as u8, global);
+}
+
+fn parse_var(parser: &mut Parser, message: &str) -> u8 {
+    consume(parser, message, TokenType::TId);
+    ider_constant(parser, parser.previous.clone())
+}
+
+fn ider_constant(parser: &mut Parser, name: Token) -> u8 {
+    let value = Values::Str(name.start.into());
+    make_constant(parser, value)
+}
+
+fn expression_statement(parser: &mut Parser) {
+    expression(parser);
+    consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
+    emit_byte(parser, OpCode::OpPop as u8);
 }
 
 fn match_tokens(parser: &mut Parser, t_type: TokenType) -> bool {
@@ -391,6 +461,20 @@ fn match_tokens(parser: &mut Parser, t_type: TokenType) -> bool {
 
 fn check(parser: &mut Parser, t_type: TokenType) -> bool {
     parser.current.token_type == t_type
+}
+
+fn sync(parser: &mut Parser) {
+    parser.panic_mode = false;
+
+    while parser.current.token_type != TokenType::TEof {
+        if parser.previous.token_type == TokenType::TSemicolon {
+            return;
+        }
+        match parser.current.token_type {
+            TokenType::Tprint | TokenType::Tmake => return,
+            _ => return,
+        }
+    }
 }
 
 pub fn compile(parser: &mut Parser) -> bool {

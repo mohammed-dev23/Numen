@@ -1,13 +1,16 @@
+use std::rc::Rc;
+
 use crate::{
     chunk::{Chunk, OpCode, Values},
     compiler::{compile, new_parser},
+    table::Table,
 };
-use std::f64;
 
 pub struct VM {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Values>,
+    globals: Table,
 }
 
 pub enum InterpretResult {
@@ -53,6 +56,7 @@ impl VM {
             chunk,
             ip: 0,
             stack: Vec::new(),
+            globals: Table::new(),
         }
     }
 
@@ -248,14 +252,6 @@ impl VM {
                     continue;
                 }
 
-                i if i == OpCode::OpTrue as u8 => {
-                    self.stack.push(Values::Bool(true));
-                }
-
-                i if i == OpCode::OpFalse as u8 => {
-                    self.stack.push(Values::Bool(false));
-                }
-
                 i if i == OpCode::OpNot as u8 => {
                     if !self.unary_op(UnaryOp::Not) {
                         return InterpretResult::InterpretRunTimeErr;
@@ -266,6 +262,45 @@ impl VM {
                 i if i == OpCode::OpPrint as u8 => {
                     let value = self.stack.pop().unwrap();
                     println!("{}", value);
+                    continue;
+                }
+
+                i if i == OpCode::OpPop as u8 => {
+                    self.stack.pop().unwrap();
+                    continue;
+                }
+
+                i if i == OpCode::OpDefGlobal as u8 => {
+                    let name = self.read_constant().to_string();
+                    self.globals.set_table(&name, self.stack.pop().unwrap());
+                    continue;
+                }
+
+                i if i == OpCode::OpGetGlobal as u8 => {
+                    let name = self.read_constant().to_string();
+
+                    if let Some(value) = self.globals.get_value(&name) {
+                        let value = value;
+                        self.stack.push(value.clone());
+                        continue;
+                    } else {
+                        self.runtime_errors("Undefined variable");
+                        print!("{}", name);
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
+                }
+
+                i if i == OpCode::OpSetGlobal as u8 => {
+                    let name = self.read_constant().to_string();
+                    // instade of using peek we are just gonna use last which simply does the same thing
+                    let value: Values = self.stack.last().unwrap().clone();
+
+                    if self.globals.set_table(&name, value) {
+                        self.globals.delete(&name);
+                        self.runtime_errors("Undefined variable");
+                        print!("{}", name);
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
                     continue;
                 }
 
@@ -342,7 +377,12 @@ impl VM {
                 BinaryOp::DivideDivide => self.stack.push(Values::Float((x as f64 / y).floor())),
             },
             (Values::Str(x), Values::Str(y)) => match op {
-                BinaryOp::Add => self.stack.push(Values::Str(x + &y)),
+                BinaryOp::Add => {
+                    let mut x_v = String::new();
+                    x_v.push_str(&x);
+
+                    self.stack.push(Values::Str(Rc::from(x_v + &y)));
+                }
                 _ => {
                     self.runtime_errors("Unsupported operation for strings.");
                     return false;

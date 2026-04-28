@@ -22,7 +22,3 @@ fn main() -> io::Result<()> {
 
     Ok(())
 }
-
-pub fn cli() -> io::Result<()> {
-    Ok(())
-}
