@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::{
-    chunk::{Chunk, OpCode, Values},
+    chunk_values::{Chunk, OpCode, Values},
     compiler::{compile, new_parser},
     table::Table,
 };
@@ -301,6 +301,19 @@ impl VM {
                         print!("{}", name);
                         return InterpretResult::InterpretRunTimeErr;
                     }
+                    continue;
+                }
+
+                i if i == OpCode::OpGetLocal as u8 => {
+                    let slot = self.read_bytes();
+                    let value = self.stack[slot as usize].clone();
+                    self.stack.push(value);
+                    continue;
+                }
+
+                i if i == OpCode::OpSetLocal as u8 => {
+                    let slot = self.read_bytes();
+                    self.stack[slot as usize] = self.stack.last().unwrap().clone();
                     continue;
                 }
 

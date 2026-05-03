@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::chunk::Values;
+use crate::chunk_values::Values;
 
 // this struct basicly stores values by there strings
 pub struct Table {

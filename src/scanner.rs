@@ -46,6 +46,8 @@ pub enum TokenType {
     Tlte,
     Tprint,
     Tmake,
+    Tlb,
+    Trb,
 }
 
 impl<'s> Scanner<'s> {
@@ -112,6 +114,8 @@ impl<'s> Scanner<'s> {
                     self.generate_token(TokenType::Tlt)
                 }
             }
+            '}' => self.generate_token(TokenType::Trb),
+            '{' => self.generate_token(TokenType::Tlb),
             _ => self.err_token("Unexpected character."),
         }
     }

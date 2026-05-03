@@ -3,10 +3,11 @@ use std::{
     io::{self, Read},
 };
 
-use crate::{chunk::Chunk, vm::VM};
+use crate::{chunk_values::Chunk, vm::VM};
 
-mod chunk;
+mod chunk_values;
 mod compiler;
+mod debug;
 mod scanner;
 mod table;
 mod vm;

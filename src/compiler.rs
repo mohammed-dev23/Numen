@@ -1,5 +1,5 @@
 use crate::{
-    chunk::{Chunk, OpCode, Values},
+    chunk_values::{Chunk, OpCode, Values},
     scanner::{Scanner, Token, TokenType},
 };
 
@@ -11,12 +11,68 @@ pub struct Parser<'p> {
     panic_mode: bool,
     chunk: &'p mut Chunk,
     scanner: Scanner<'p>,
+    compiler: Option<Box<Compiler>>,
 }
 
 pub struct ParseRules {
     pub prefix: Option<ParseFn>,
     pub infix: Option<ParseFn>,
     pub prec: Precedence,
+}
+
+#[derive(Debug)]
+pub struct Compiler {
+    locals: Vec<Local>,
+    local_count: i64,
+    scope_depth: i64,
+}
+
+#[derive(Debug)]
+pub struct Local {
+    name: Token,
+    depth: i64,
+}
+
+impl Compiler {
+    pub fn new() -> Self {
+        Self {
+            locals: Vec::new(),
+            local_count: 0,
+            scope_depth: 0,
+        }
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) -> u8 {
+        self.scope_depth -= 1;
+        let mut pops: u8 = 0;
+
+        while self.local_count > 0
+            && self.locals[(self.local_count - 1) as usize].depth > self.scope_depth
+        {
+            pops += 1;
+            self.local_count -= 1;
+        }
+
+        pops
+    }
+
+    fn add_local(&mut self, name: Token) {
+        let local = Local {
+            name: name,
+            depth: -1,
+        };
+        self.locals.push(local);
+        self.local_count += 1;
+    }
+
+    fn mark_initialized(&mut self) {
+        let last = self.local_count as usize - 1;
+        self.locals[last].depth = self.scope_depth;
+    }
 }
 
 pub type ParseFn = fn(&mut Parser, can_assign: bool);
@@ -29,7 +85,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 28] = [
+static RULES: [ParseRules; 30] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -142,6 +198,8 @@ static RULES: [ParseRules; 28] = [
     },
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
+    NONE_RULE,
 ];
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
@@ -173,6 +231,7 @@ pub fn new_parser<'p>(chunk: &'p mut Chunk, source: &'p str) -> Parser<'p> {
         panic_mode: false,
         chunk,
         scanner,
+        compiler: Some(Box::new(Compiler::new())),
     }
 }
 pub fn advance(parser: &mut Parser) {
@@ -278,14 +337,45 @@ fn variable(parser: &mut Parser, can_assign: bool) {
 }
 
 fn named_variable(parser: &mut Parser, name: Token, can_assign: bool) {
-    let arg = ider_constant(parser, name);
+    let arg = resolve_locals(parser, &name);
+
+    let get_op: u8;
+    let set_op: u8;
+
+    let arg = if arg != -1 {
+        get_op = OpCode::OpGetLocal as u8;
+        set_op = OpCode::OpSetLocal as u8;
+
+        arg as u8
+    } else {
+        let arg = ider_constant(parser, name);
+        get_op = OpCode::OpGetGlobal as u8;
+        set_op = OpCode::OpSetGlobal as u8;
+
+        arg
+    };
 
     if can_assign && match_tokens(parser, TokenType::Teq) {
         expression(parser);
-        emit_bytes(parser, OpCode::OpSetGlobal as u8, arg);
+        emit_bytes(parser, set_op, arg);
     } else {
-        emit_bytes(parser, OpCode::OpGetGlobal as u8, arg);
+        emit_bytes(parser, get_op, arg);
     }
+}
+
+fn resolve_locals(parser: &mut Parser, name: &Token) -> i64 {
+    for i in (0..parser.compiler.as_ref().unwrap().local_count).rev() {
+        let local = &parser.compiler.as_ref().unwrap().locals[i as usize].name;
+        let depth = &parser.compiler.as_ref().unwrap().locals[i as usize].depth;
+
+        if ider_eq(&name, local) {
+            if *depth == -1 {
+                error(parser, "Can't read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+    return -1;
 }
 
 fn emit_constant<'p>(parser: &mut Parser<'p>, value: Values) {
@@ -404,9 +494,25 @@ fn declaration(parser: &mut Parser) {
 fn statement(parser: &mut Parser) {
     if match_tokens(parser, TokenType::Tprint) {
         print_statement(parser);
+    } else if match_tokens(parser, TokenType::Tlb) {
+        parser.compiler.as_mut().unwrap().begin_scope();
+        block(parser);
+        let pops = parser.compiler.as_mut().unwrap().end_scope();
+
+        for _ in 0..pops {
+            emit_byte(parser, OpCode::OpPop as u8);
+        }
     } else {
         expression_statement(parser);
     }
+}
+
+fn block(parser: &mut Parser) {
+    while !check(parser, TokenType::Trb) && !check(parser, TokenType::TEof) {
+        declaration(parser);
+    }
+
+    consume(parser, "Expect '}' after block.", TokenType::Trb);
 }
 
 fn print_statement(parser: &mut Parser) {
@@ -432,11 +538,51 @@ fn var_declaration(parser: &mut Parser) {
 }
 
 fn define_var(parser: &mut Parser, global: u8) {
+    if parser.compiler.as_ref().unwrap().scope_depth > 0 {
+        parser.compiler.as_mut().unwrap().mark_initialized();
+        return;
+    }
     emit_bytes(parser, OpCode::OpDefGlobal as u8, global);
+}
+
+fn declare_var(parser: &mut Parser) {
+    if parser.compiler.as_ref().unwrap().scope_depth == 0 {
+        return;
+    }
+
+    let name = parser.previous.clone();
+
+    for i in (0..parser.compiler.as_ref().unwrap().local_count).rev() {
+        let local = &parser.compiler.as_mut().unwrap().locals[i as usize]
+            .depth
+            .clone();
+
+        let local_name = &parser.compiler.as_ref().unwrap().locals[i as usize].name;
+
+        if *local != -1 && *local < parser.compiler.as_deref().unwrap().scope_depth as i64 {
+            break;
+        }
+
+        if ider_eq(&name, &local_name) {
+            error(parser, "Already a variable with this name in this scope.");
+        }
+    }
+
+    parser.compiler.as_mut().unwrap().add_local(name.clone());
+}
+
+fn ider_eq(v1: &Token, v2: &Token) -> bool {
+    v1.start == v2.start
 }
 
 fn parse_var(parser: &mut Parser, message: &str) -> u8 {
     consume(parser, message, TokenType::TId);
+
+    declare_var(parser);
+    if parser.compiler.as_ref().unwrap().scope_depth > 0 {
+        return 0;
+    }
+
     ider_constant(parser, parser.previous.clone())
 }
 
