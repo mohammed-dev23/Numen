@@ -34,3 +34,24 @@ make fullname1 = fname + " " + sname;
 print fullname1;
 
 print false;
+
+# scops what is insaide is insade and never the outsider will tuoch or even look it
+# but who is insade can look at who is outside easily
+{
+    make xv5 = 8;
+    print xv5;
+    {
+        # what we have here is called shadowing !
+        make y = xv5;
+        print y;
+        {
+            make nano = fullname1;
+            print nano;
+        }
+    }
+}
+
+print x;
+
+# this is an error becuase nano is in scope that you can not accses what is outside the scope
+# print nano;
