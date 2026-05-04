@@ -18,8 +18,8 @@ pub struct Token {
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(usize)]
 pub enum TokenType {
-    TLr,
-    TRr,
+    TLp,
+    TRp,
     TPlus,
     Tminus,
     TSemicolon,
@@ -48,6 +48,8 @@ pub enum TokenType {
     Tmake,
     Tlb,
     Trb,
+    Tif,
+    Telse,
 }
 
 impl<'s> Scanner<'s> {
@@ -73,8 +75,8 @@ impl<'s> Scanner<'s> {
             '"' => self.string_tokens(),
             c if c.is_ascii_digit() => self.num_tokens(),
             c if c.is_ascii_alphanumeric() => self.identifier(),
-            '(' => self.generate_token(TokenType::TLr),
-            ')' => self.generate_token(TokenType::TRr),
+            '(' => self.generate_token(TokenType::TLp),
+            ')' => self.generate_token(TokenType::TRp),
             '-' => self.generate_token(TokenType::Tminus),
             '%' => self.generate_token(TokenType::TmodOp),
             '*' => self.generate_token(TokenType::TmulOp),
@@ -146,7 +148,7 @@ impl<'s> Scanner<'s> {
 
     fn advance(&mut self) -> char {
         let c = self.current.chars().next().unwrap();
-        self.current = &self.current[1..];
+        self.current = &self.current[c.len_utf8()..];
         c
     }
 
@@ -244,6 +246,8 @@ impl<'s> Scanner<'s> {
             ("false", TokenType::Tfalse),
             ("print", TokenType::Tprint),
             ("make", TokenType::Tmake),
+            ("if", TokenType::Tif),
+            ("else", TokenType::Telse),
         ]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
@@ -252,6 +256,8 @@ impl<'s> Scanner<'s> {
             TokenType::Tfalse => TokenType::Tfalse,
             TokenType::Tprint => TokenType::Tprint,
             TokenType::Tmake => TokenType::Tmake,
+            TokenType::Tif => TokenType::Tif,
+            TokenType::Telse => TokenType::Telse,
             _ => TokenType::TId,
         })
     }

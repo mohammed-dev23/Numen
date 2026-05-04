@@ -85,7 +85,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 30] = [
+static RULES: [ParseRules; 32] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -200,7 +200,10 @@ static RULES: [ParseRules; 30] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
+    NONE_RULE,
 ];
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     None,
@@ -396,7 +399,7 @@ fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u8 {
 
 fn grouping(parser: &mut Parser, _can_assign: bool) {
     expression(parser);
-    consume(parser, "Expect ')' after expression.", TokenType::TRr);
+    consume(parser, "Expect ')' after expression.", TokenType::TRp);
 }
 
 fn parse_precedence(parser: &mut Parser, prec: Precedence) {
@@ -494,6 +497,8 @@ fn declaration(parser: &mut Parser) {
 fn statement(parser: &mut Parser) {
     if match_tokens(parser, TokenType::Tprint) {
         print_statement(parser);
+    } else if match_tokens(parser, TokenType::Tif) {
+        if_statement(parser);
     } else if match_tokens(parser, TokenType::Tlb) {
         parser.compiler.as_mut().unwrap().begin_scope();
         block(parser);
@@ -519,6 +524,28 @@ fn print_statement(parser: &mut Parser) {
     expression(parser);
     consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
     emit_byte(parser, OpCode::OpPrint as u8);
+}
+
+fn if_statement(parser: &mut Parser) {
+    expression(parser);
+
+    let then_jump = emit_jump(parser, OpCode::OpJumpIfFalse as u8);
+    statement(parser);
+
+    patch_jump(parser, then_jump);
+}
+
+fn emit_jump(parser: &mut Parser, instruction: u8) -> usize {
+    emit_byte(parser, instruction);
+    emit_byte(parser, 0xff);
+    emit_byte(parser, 0xff);
+    parser.chunk.code.len() - 2
+}
+
+fn patch_jump(parser: &mut Parser, offset: usize) {
+    let jump = parser.chunk.code.len() - offset - 2;
+    parser.chunk.code[offset] = ((jump >> 8) & 0xff) as u8;
+    parser.chunk.code[offset + 1] = (jump & 0xff) as u8;
 }
 
 fn var_declaration(parser: &mut Parser) {

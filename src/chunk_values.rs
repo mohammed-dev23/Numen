@@ -47,6 +47,7 @@ pub enum OpCode {
 
     //statements
     OpPrint,
+    OpJumpIfFalse,
 }
 
 #[derive(Debug, Clone)]
@@ -102,5 +103,67 @@ impl ValueArray {
 
     pub fn write_value(&mut self, values: Values) {
         self.values.push(values);
+    }
+}
+
+#[allow(warnings)]
+impl Values {
+    pub fn bool_val(bool: bool) -> Self {
+        Self::Bool(bool)
+    }
+
+    pub fn int_val(int: i64) -> Self {
+        Self::Int(int)
+    }
+
+    pub fn float_val(float: f64) -> Self {
+        Self::Float(float)
+    }
+
+    pub fn none() -> Self {
+        Self::None
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Values::Bool(b) => Some(*b),
+            _ => None,
+        }
+    }
+
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            Values::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            Values::Float(f) => Some(*f),
+            _ => None,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        self.as_bool().is_some()
+    }
+
+    pub fn is_int(&self) -> bool {
+        self.as_int().is_some()
+    }
+
+    pub fn is_float(&self) -> bool {
+        self.as_float().is_some()
+    }
+
+    pub fn is_false(&self) -> bool {
+        match self {
+            Values::Bool(b) => !b,
+            Values::None => true,
+            Values::Int(0) => true,
+            Values::Float(f) => *f == 0.0,
+            _ => false,
+        }
     }
 }

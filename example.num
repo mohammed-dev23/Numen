@@ -1,57 +1,12 @@
-# this is a comment in numen
-# every thing is working well!
+# this is simple number negativety checker in numen
 
-make x1 = 8 + 9 / 1 * 1 + 10^2;
-make x2 = 9 + 1 * 1 / 2;
-make x3 = 10 + 1 - 8 % 6;
-make x4 = -15 - 1.9 * (8 + 9);
-make x5 = 100 // 20.7;
+make x = -1;
 
-print x1 + x2 + x3 + x4 + x5;
-
-make x = "Hello, World!";
-print x;
-
-make m = 8;
-m = 0;
-print m;
-
-make t = x1 >= x5;
-print t;
-
-make fname = "mohammed";
-make sname = "amarneh";
-
-make fullname0 = fname + " " + sname;
-print fullname0;
-
-# what we do here is assigning the new value to the old var we crated
-fname = "owner";
-sname = "mohammed";
-
-make fullname1 = fname + " " + sname;
-
-print fullname1;
-
-print false;
-
-# scops what is insaide is insade and never the outsider will tuoch or even look it
-# but who is insade can look at who is outside easily
-{
-    make xv5 = 8;
-    print xv5;
-    {
-        # what we have here is called shadowing !
-        make y = xv5;
-        print y;
-        {
-            make nano = fullname1;
-            print nano;
-        }
-    }
+if x < 0 {
+    print "negative";
 }
 
-print x;
-
-# this is an error becuase nano is in scope that you can not accses what is outside the scope
-# print nano;
+# else statement will be added soon!
+if x > 0 {
+    print "positive";
+}

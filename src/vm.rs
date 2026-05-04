@@ -317,6 +317,16 @@ impl VM {
                     continue;
                 }
 
+                i if i == OpCode::OpJumpIfFalse as u8 => {
+                    let offset = self.read_short() as usize;
+                    let value = self.stack.last().unwrap();
+
+                    if value.is_false() {
+                        self.ip += offset;
+                        continue;
+                    }
+                }
+
                 _ => {
                     println!("! InterpretCompileErr !");
                     return InterpretResult::InterpretCompileErr;
@@ -334,6 +344,13 @@ impl VM {
     fn read_constant(&mut self) -> Values {
         let index = self.read_bytes() as usize;
         self.chunk.constant.values[index].clone()
+    }
+
+    fn read_short(&mut self) -> u16 {
+        let high = self.chunk.code[self.ip] as u16;
+        let low = self.chunk.code[self.ip + 1] as u16;
+        self.ip += 2;
+        high >> 8 | low
     }
 
     fn runtime_errors(&mut self, msg: &str) {
