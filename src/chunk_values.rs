@@ -15,6 +15,8 @@ pub enum OpCode {
     OpSetGlobal,
     OpSetLocal,
     OpGetLocal,
+    OpDefFixed,
+    OpSetLocalFixed,
 
     //values for UnaryOp
     OpNegate,
@@ -44,6 +46,10 @@ pub enum OpCode {
     OpGt,
     OpGte,
     OpLte,
+
+    //values for  LogicalOp
+    OpAnd,
+    OpOr,
 
     //statements
     OpPrint,

@@ -31,6 +31,7 @@ pub struct Compiler {
 pub struct Local {
     name: Token,
     depth: i64,
+    is_mut: bool,
 }
 
 impl Compiler {
@@ -60,11 +61,13 @@ impl Compiler {
         pops
     }
 
-    fn add_local(&mut self, name: Token) {
+    fn add_local(&mut self, name: Token, is_mut: bool) {
         let local = Local {
             name: name,
             depth: -1,
+            is_mut: is_mut,
         };
+
         self.locals.push(local);
         self.local_count += 1;
     }
@@ -85,7 +88,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 32] = [
+static RULES: [ParseRules; 35] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -202,12 +205,25 @@ static RULES: [ParseRules; 32] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::And,
+    },
+    ParseRules {
+        prefix: None,
+        infix: Some(binary),
+        prec: Precedence::Or,
+    },
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Precedence {
     None,
     Assignment, // =
+    Or,         // logical op
+    And,        // logical op
     Eq,         // == !=
     Comps,      // > < >= <=
     Terms,      // - +
@@ -345,11 +361,16 @@ fn named_variable(parser: &mut Parser, name: Token, can_assign: bool) {
     let get_op: u8;
     let set_op: u8;
 
-    let arg = if arg != -1 {
+    let arg = if arg.0 != -1 {
         get_op = OpCode::OpGetLocal as u8;
-        set_op = OpCode::OpSetLocal as u8;
 
-        arg as u8
+        set_op = if arg.1 {
+            OpCode::OpSetLocal as u8
+        } else {
+            OpCode::OpSetLocalFixed as u8
+        };
+
+        arg.0 as u8
     } else {
         let arg = ider_constant(parser, name);
         get_op = OpCode::OpGetGlobal as u8;
@@ -366,19 +387,22 @@ fn named_variable(parser: &mut Parser, name: Token, can_assign: bool) {
     }
 }
 
-fn resolve_locals(parser: &mut Parser, name: &Token) -> i64 {
+fn resolve_locals(parser: &mut Parser, name: &Token) -> (i64, bool) {
     for i in (0..parser.compiler.as_ref().unwrap().local_count).rev() {
         let local = &parser.compiler.as_ref().unwrap().locals[i as usize].name;
         let depth = &parser.compiler.as_ref().unwrap().locals[i as usize].depth;
+        let is_mut = &parser.compiler.as_ref().unwrap().locals[i as usize]
+            .is_mut
+            .clone();
 
         if ider_eq(&name, local) {
             if *depth == -1 {
                 error(parser, "Can't read local variable in its own initializer.");
             }
-            return i;
+            return (i, *is_mut);
         }
     }
-    return -1;
+    return (-1, false);
 }
 
 fn emit_constant<'p>(parser: &mut Parser<'p>, value: Values) {
@@ -448,7 +472,9 @@ fn binary(parser: &mut Parser, _can_assign: bool) {
 
     let next_rule = match rule.prec {
         Precedence::None => Precedence::Assignment,
-        Precedence::Assignment => Precedence::Eq,
+        Precedence::Assignment => Precedence::Or,
+        Precedence::Or => Precedence::And,
+        Precedence::And => Precedence::Eq,
         Precedence::Eq => Precedence::Comps,
         Precedence::Comps => Precedence::Terms,
         Precedence::Terms => Precedence::Factors,
@@ -474,6 +500,8 @@ fn binary(parser: &mut Parser, _can_assign: bool) {
         TokenType::Tlt => emit_byte(parser, OpCode::OpLt as u8),
         TokenType::Tgte => emit_byte(parser, OpCode::OpGte as u8),
         TokenType::Tlte => emit_byte(parser, OpCode::OpLte as u8),
+        TokenType::Tand => emit_byte(parser, OpCode::OpAnd as u8),
+        TokenType::Tor => emit_byte(parser, OpCode::OpOr as u8),
         _ => unreachable!(),
     }
 }
@@ -484,7 +512,9 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
 
 fn declaration(parser: &mut Parser) {
     if match_tokens(parser, TokenType::Tmake) {
-        var_declaration(parser);
+        var_declaration(parser, true);
+    } else if match_tokens(parser, TokenType::Tfix) {
+        var_declaration(parser, false);
     } else {
         statement(parser);
     }
@@ -548,8 +578,8 @@ fn patch_jump(parser: &mut Parser, offset: usize) {
     parser.chunk.code[offset + 1] = (jump & 0xff) as u8;
 }
 
-fn var_declaration(parser: &mut Parser) {
-    let global = parse_var(parser, "Expect variable name.");
+fn var_declaration(parser: &mut Parser, is_mut: bool) {
+    let var = parse_var(parser, "Expect variable name.", is_mut);
 
     if match_tokens(parser, TokenType::Teq) {
         expression(parser);
@@ -561,18 +591,22 @@ fn var_declaration(parser: &mut Parser) {
         "Expect ';' after variable declaration.",
         TokenType::TSemicolon,
     );
-    define_var(parser, global);
+    define_var(parser, var, is_mut);
 }
 
-fn define_var(parser: &mut Parser, global: u8) {
+fn define_var(parser: &mut Parser, var: u8, is_mut: bool) {
     if parser.compiler.as_ref().unwrap().scope_depth > 0 {
         parser.compiler.as_mut().unwrap().mark_initialized();
         return;
     }
-    emit_bytes(parser, OpCode::OpDefGlobal as u8, global);
+    if is_mut {
+        emit_bytes(parser, OpCode::OpDefGlobal as u8, var);
+    } else {
+        emit_bytes(parser, OpCode::OpDefFixed as u8, var);
+    }
 }
 
-fn declare_var(parser: &mut Parser) {
+fn declare_var(parser: &mut Parser, is_mut: bool) {
     if parser.compiler.as_ref().unwrap().scope_depth == 0 {
         return;
     }
@@ -595,19 +629,24 @@ fn declare_var(parser: &mut Parser) {
         }
     }
 
-    parser.compiler.as_mut().unwrap().add_local(name.clone());
+    parser
+        .compiler
+        .as_mut()
+        .unwrap()
+        .add_local(name.clone(), is_mut);
 }
 
 fn ider_eq(v1: &Token, v2: &Token) -> bool {
     v1.start == v2.start
 }
 
-fn parse_var(parser: &mut Parser, message: &str) -> u8 {
+fn parse_var(parser: &mut Parser, message: &str, is_mut: bool) -> u8 {
     consume(parser, message, TokenType::TId);
 
-    declare_var(parser);
+    declare_var(parser, is_mut);
     if parser.compiler.as_ref().unwrap().scope_depth > 0 {
-        return 0;
+        let idx = parser.compiler.as_ref().unwrap().local_count - 1;
+        return idx as u8;
     }
 
     ider_constant(parser, parser.previous.clone())

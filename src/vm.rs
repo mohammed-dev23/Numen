@@ -50,6 +50,11 @@ pub enum ComparisonOp {
     Lte,
 }
 
+pub enum LogicalOp {
+    And,
+    Or,
+}
+
 impl VM {
     pub fn new_vm(chunk: Chunk) -> Self {
         Self {
@@ -272,14 +277,22 @@ impl VM {
 
                 i if i == OpCode::OpDefGlobal as u8 => {
                     let name = self.read_constant().to_string();
-                    self.globals.set_table(&name, self.stack.pop().unwrap());
+                    self.globals
+                        .set_table(&name, self.stack.pop().unwrap(), true);
+                    continue;
+                }
+
+                i if i == OpCode::OpDefFixed as u8 => {
+                    let name = self.read_constant().to_string();
+                    self.globals
+                        .set_table(&name, self.stack.pop().unwrap(), false);
                     continue;
                 }
 
                 i if i == OpCode::OpGetGlobal as u8 => {
                     let name = self.read_constant().to_string();
 
-                    if let Some(value) = self.globals.get_value(&name) {
+                    if let Some((value, _)) = self.globals.get_value(&name) {
                         let value = value;
                         self.stack.push(value.clone());
                         continue;
@@ -292,14 +305,22 @@ impl VM {
 
                 i if i == OpCode::OpSetGlobal as u8 => {
                     let name = self.read_constant().to_string();
-                    // instade of using peek we are just gonna use last which simply does the same thing
-                    let value: Values = self.stack.last().unwrap().clone();
 
-                    if self.globals.set_table(&name, value) {
-                        self.globals.delete(&name);
-                        self.runtime_errors("Undefined variable");
-                        print!("{}", name);
-                        return InterpretResult::InterpretRunTimeErr;
+                    match self.globals.get_value(&name) {
+                        None => {
+                            self.globals.delete(&name);
+                            self.runtime_errors("Undefined variable");
+                            print!("{}", name);
+                            return InterpretResult::InterpretRunTimeErr;
+                        }
+                        Some((_, false)) => {
+                            self.runtime_errors("Cannot reassign immutable variable.");
+                            return InterpretResult::InterpretRunTimeErr;
+                        }
+                        Some((_, true)) => {
+                            let value = self.stack.last().unwrap().clone();
+                            self.globals.set_table(&name, value, true);
+                        }
                     }
                     continue;
                 }
@@ -311,20 +332,41 @@ impl VM {
                     continue;
                 }
 
+                i if i == OpCode::OpSetLocalFixed as u8 => {
+                    let _slot = self.read_bytes();
+                    self.runtime_errors("Cannot reassign immutable variable.");
+                    return InterpretResult::InterpretRunTimeErr;
+                }
+
                 i if i == OpCode::OpSetLocal as u8 => {
                     let slot = self.read_bytes();
                     self.stack[slot as usize] = self.stack.last().unwrap().clone();
+
                     continue;
                 }
 
                 i if i == OpCode::OpJumpIfFalse as u8 => {
                     let offset = self.read_short() as usize;
-                    let value = self.stack.last().unwrap();
+                    let value = self.stack.pop().unwrap();
 
                     if value.is_false() {
                         self.ip += offset;
                         continue;
                     }
+                }
+
+                i if i == OpCode::OpAnd as u8 => {
+                    if !self.logical_op(LogicalOp::And) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
+                    continue;
+                }
+
+                i if i == OpCode::OpOr as u8 => {
+                    if !self.logical_op(LogicalOp::Or) {
+                        return InterpretResult::InterpretRunTimeErr;
+                    }
+                    continue;
                 }
 
                 _ => {
@@ -534,6 +576,22 @@ impl VM {
             },
             _ => {
                 self.runtime_errors("Unsupported compression operation.");
+                return false;
+            }
+        }
+        true
+    }
+    fn logical_op(&mut self, op: LogicalOp) -> bool {
+        let y = self.stack.pop().unwrap();
+        let x = self.stack.pop().unwrap();
+
+        match (x, y) {
+            (Values::Bool(x), Values::Bool(y)) => match op {
+                LogicalOp::And => self.stack.push(Values::Bool(x && y)),
+                LogicalOp::Or => self.stack.push(Values::Bool(x || y)),
+            },
+            _ => {
+                self.runtime_errors("Operands must be booleans.");
                 return false;
             }
         }

@@ -5,7 +5,7 @@ use crate::chunk_values::Values;
 // this struct basicly stores values by there strings
 pub struct Table {
     // we use hashmap with string and values
-    hash_table: HashMap<String, Values>,
+    hash_table: HashMap<String, (Values, bool)>,
 }
 
 impl Table {
@@ -16,12 +16,12 @@ impl Table {
         }
     }
 
-    pub fn set_table(&mut self, key: &str, value: Values) -> bool {
+    pub fn set_table(&mut self, key: &str, value: Values, is_mut: bool) -> bool {
         // here we first check if the key already exsits or not if it does it
         // returns false if it doesn't it return true
         let is_new = !self.hash_table.contains_key(key);
         // we insert the key and value to the hashmap
-        self.hash_table.insert(key.to_string(), value);
+        self.hash_table.insert(key.to_string(), (value, is_mut));
         // return this at last
         is_new
     }
@@ -36,7 +36,7 @@ impl Table {
         }
     }
 
-    pub fn get_value(&self, key: &str) -> Option<&Values> {
+    pub fn get_value(&self, key: &str) -> Option<&(Values, bool)> {
         // here we get the value by simply calling it if it ex
         // we get Some(v) if it's not we get None
         self.hash_table.get(key)

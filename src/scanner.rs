@@ -50,6 +50,9 @@ pub enum TokenType {
     Trb,
     Tif,
     Telse,
+    Tfix,
+    Tand,
+    Tor,
 }
 
 impl<'s> Scanner<'s> {
@@ -248,6 +251,9 @@ impl<'s> Scanner<'s> {
             ("make", TokenType::Tmake),
             ("if", TokenType::Tif),
             ("else", TokenType::Telse),
+            ("fix", TokenType::Tfix),
+            ("and", TokenType::Tand),
+            ("or", TokenType::Tor),
         ]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
@@ -258,6 +264,9 @@ impl<'s> Scanner<'s> {
             TokenType::Tmake => TokenType::Tmake,
             TokenType::Tif => TokenType::Tif,
             TokenType::Telse => TokenType::Telse,
+            TokenType::Tfix => TokenType::Tfix,
+            TokenType::Tand => TokenType::Tand,
+            TokenType::Tor => TokenType::Tor,
             _ => TokenType::TId,
         })
     }

@@ -107,6 +107,14 @@ impl Chunk {
             i if i == OpCode::OpGetLocal as u8 => {
                 Self::byte_instruction(self, "OPGETLOCAL".to_string(), offset)
             }
+            i if i == OpCode::OpDefFixed as u8 => {
+                Self::constant_instruction(self, "OPDEFFIXED".to_string(), offset)
+            }
+            i if i == OpCode::OpAdd as u8 => Self::simple_instruction(offset, "OPADD".to_string()),
+            i if i == OpCode::OpOr as u8 => Self::simple_instruction(offset, "OPOR".to_string()),
+            i if i == OpCode::OpSetLocalFixed as u8 => {
+                Self::byte_instruction(self, "OPSETLOCALFiXED".to_string(), offset)
+            }
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1
