@@ -511,7 +511,7 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
 }
 
 fn declaration(parser: &mut Parser) {
-    if match_tokens(parser, TokenType::Tmake) {
+    if match_tokens(parser, TokenType::Tset) {
         var_declaration(parser, true);
     } else if match_tokens(parser, TokenType::Tfix) {
         var_declaration(parser, false);
@@ -560,9 +560,18 @@ fn if_statement(parser: &mut Parser) {
     expression(parser);
 
     let then_jump = emit_jump(parser, OpCode::OpJumpIfFalse as u8);
+    emit_byte(parser, OpCode::OpPop as u8);
+
     statement(parser);
 
+    let else_jump = emit_jump(parser, OpCode::OpJump as u8);
     patch_jump(parser, then_jump);
+    emit_byte(parser, OpCode::OpPop as u8);
+
+    if match_tokens(parser, TokenType::Telse) {
+        statement(parser);
+        patch_jump(parser, else_jump);
+    }
 }
 
 fn emit_jump(parser: &mut Parser, instruction: u8) -> usize {
@@ -683,7 +692,7 @@ fn sync(parser: &mut Parser) {
             return;
         }
         match parser.current.token_type {
-            TokenType::Tprint | TokenType::Tmake => return,
+            TokenType::Tprint | TokenType::Tset => return,
             _ => return,
         }
     }

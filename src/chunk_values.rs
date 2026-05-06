@@ -53,7 +53,10 @@ pub enum OpCode {
 
     //statements
     OpPrint,
+
+    //controlflow OpCodes
     OpJumpIfFalse,
+    OpJump,
 }
 
 #[derive(Debug, Clone)]

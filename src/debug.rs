@@ -115,6 +115,12 @@ impl Chunk {
             i if i == OpCode::OpSetLocalFixed as u8 => {
                 Self::byte_instruction(self, "OPSETLOCALFiXED".to_string(), offset)
             }
+            i if i == OpCode::OpJumpIfFalse as u8 => {
+                Self::jump_instruction(&self, "OPJUMPIFFALSE".to_string(), 1, offset)
+            }
+            i if i == OpCode::OpJump as u8 => {
+                Self::jump_instruction(&self, "OPJUMP".to_string(), 1, offset)
+            }
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1
@@ -140,5 +146,18 @@ impl Chunk {
         let slot = self.code[offset + 1];
         println!("{:<16} {:4}", name, slot);
         offset + 2
+    }
+
+    fn jump_instruction(&self, name: String, sign: i64, offset: usize) -> usize {
+        let jump = ((self.code[offset + 1]) as u16) << 8 | (self.code[offset + 2] as u16);
+
+        println!(
+            "{:<16} {:4} -> {}",
+            name,
+            offset,
+            offset as i64 + 3 + sign * jump as i64
+        );
+
+        offset + 3
     }
 }

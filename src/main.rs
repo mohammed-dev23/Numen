@@ -18,7 +18,9 @@ fn main() -> io::Result<()> {
         .read_to_string(&mut file)?;
 
     let chunk = Chunk::new_chunk();
-    chunk.disassembler("BYTECODE");
+
+    chunk.disassembler("");
+
     VM::new_vm(chunk).interpret(&file);
 
     Ok(())

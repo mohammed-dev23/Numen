@@ -347,7 +347,7 @@ impl VM {
 
                 i if i == OpCode::OpJumpIfFalse as u8 => {
                     let offset = self.read_short() as usize;
-                    let value = self.stack.pop().unwrap();
+                    let value = self.stack.last().unwrap();
 
                     if value.is_false() {
                         self.ip += offset;
@@ -366,6 +366,12 @@ impl VM {
                     if !self.logical_op(LogicalOp::Or) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
+                    continue;
+                }
+
+                i if i == OpCode::OpJump as u8 => {
+                    let offset = self.read_short();
+                    self.ip += offset as usize;
                     continue;
                 }
 
@@ -391,8 +397,9 @@ impl VM {
     fn read_short(&mut self) -> u16 {
         let high = self.chunk.code[self.ip] as u16;
         let low = self.chunk.code[self.ip + 1] as u16;
+
         self.ip += 2;
-        high >> 8 | low
+        (high << 8) | low
     }
 
     fn runtime_errors(&mut self, msg: &str) {

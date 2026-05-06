@@ -45,7 +45,7 @@ pub enum TokenType {
     Tgte,
     Tlte,
     Tprint,
-    Tmake,
+    Tset,
     Tlb,
     Trb,
     Tif,
@@ -77,7 +77,7 @@ impl<'s> Scanner<'s> {
             ';' => self.generate_token(TokenType::TSemicolon),
             '"' => self.string_tokens(),
             c if c.is_ascii_digit() => self.num_tokens(),
-            c if c.is_ascii_alphanumeric() => self.identifier(),
+            c if c.is_ascii_alphanumeric() || c == '_' => self.identifier(),
             '(' => self.generate_token(TokenType::TLp),
             ')' => self.generate_token(TokenType::TRp),
             '-' => self.generate_token(TokenType::Tminus),
@@ -238,7 +238,10 @@ impl<'s> Scanner<'s> {
     }
 
     fn identifier(&mut self) -> Token {
-        while self.peek().is_ascii_alphabetic() || self.peek().is_ascii_digit() {
+        while self.peek().is_ascii_alphabetic()
+            || self.peek().is_ascii_digit()
+            || self.peek() == '_'
+        {
             self.advance();
         }
 
@@ -248,7 +251,7 @@ impl<'s> Scanner<'s> {
             ("true", TokenType::Ttrue),
             ("false", TokenType::Tfalse),
             ("print", TokenType::Tprint),
-            ("make", TokenType::Tmake),
+            ("set", TokenType::Tset),
             ("if", TokenType::Tif),
             ("else", TokenType::Telse),
             ("fix", TokenType::Tfix),
@@ -261,7 +264,7 @@ impl<'s> Scanner<'s> {
             TokenType::Ttrue => TokenType::Ttrue,
             TokenType::Tfalse => TokenType::Tfalse,
             TokenType::Tprint => TokenType::Tprint,
-            TokenType::Tmake => TokenType::Tmake,
+            TokenType::Tset => TokenType::Tset,
             TokenType::Tif => TokenType::Tif,
             TokenType::Telse => TokenType::Telse,
             TokenType::Tfix => TokenType::Tfix,
