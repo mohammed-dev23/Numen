@@ -17,6 +17,7 @@ pub enum OpCode {
     OpGetLocal,
     OpDefFixed,
     OpSetLocalFixed,
+    OpLoop,
 
     //values for UnaryOp
     OpNegate,

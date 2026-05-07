@@ -1,10 +1,10 @@
-use std::rc::Rc;
-
 use crate::{
     chunk_values::{Chunk, OpCode, Values},
     compiler::{compile, new_parser},
     table::Table,
 };
+
+use std::rc::Rc;
 
 pub struct VM {
     chunk: Chunk,
@@ -372,6 +372,12 @@ impl VM {
                 i if i == OpCode::OpJump as u8 => {
                     let offset = self.read_short();
                     self.ip += offset as usize;
+                    continue;
+                }
+
+                i if i == OpCode::OpLoop as u8 => {
+                    let offset = self.read_short();
+                    self.ip -= offset as usize;
                     continue;
                 }
 

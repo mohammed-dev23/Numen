@@ -121,6 +121,10 @@ impl Chunk {
             i if i == OpCode::OpJump as u8 => {
                 Self::jump_instruction(&self, "OPJUMP".to_string(), 1, offset)
             }
+
+            i if i == OpCode::OpLoop as u8 => {
+                Self::jump_instruction(&self, "OPLOOP".to_string(), 1, offset)
+            }
             _ => {
                 println!("Unknown opcode {}", instruction);
                 offset + 1

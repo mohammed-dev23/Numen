@@ -37,3 +37,11 @@ if score >= 90 {
 } else {
     print "B";
 }
+
+# loops
+set x = 0;
+
+while 10 > x {
+    print "hello";
+    x = x + 1;
+}

@@ -88,7 +88,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 35] = [
+static RULES: [ParseRules; 36] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -216,6 +216,7 @@ static RULES: [ParseRules; 35] = [
         infix: Some(binary),
         prec: Precedence::Or,
     },
+    NONE_RULE,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -537,6 +538,8 @@ fn statement(parser: &mut Parser) {
         for _ in 0..pops {
             emit_byte(parser, OpCode::OpPop as u8);
         }
+    } else if match_tokens(parser, TokenType::Twhile) {
+        while_statement(parser);
     } else {
         expression_statement(parser);
     }
@@ -574,11 +577,34 @@ fn if_statement(parser: &mut Parser) {
     }
 }
 
+fn while_statement(parser: &mut Parser) {
+    let loop_start = parser.chunk.code.len();
+    expression(parser);
+
+    let exit = emit_jump(parser, OpCode::OpJumpIfFalse as u8);
+    emit_byte(parser, OpCode::OpPop as u8);
+    statement(parser);
+
+    emit_loop(parser, loop_start as u8);
+
+    patch_jump(parser, exit);
+    emit_byte(parser, OpCode::OpPop as u8);
+}
+
 fn emit_jump(parser: &mut Parser, instruction: u8) -> usize {
     emit_byte(parser, instruction);
     emit_byte(parser, 0xff);
     emit_byte(parser, 0xff);
     parser.chunk.code.len() - 2
+}
+
+fn emit_loop(parser: &mut Parser, loop_start: u8) {
+    emit_byte(parser, OpCode::OpLoop as u8);
+
+    let offset = parser.chunk.code.len() as u8 - loop_start + 2;
+
+    emit_byte(parser, ((offset as u16 >> 8) & 0xff) as u8);
+    emit_byte(parser, offset & 0xff);
 }
 
 fn patch_jump(parser: &mut Parser, offset: usize) {

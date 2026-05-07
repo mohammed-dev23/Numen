@@ -53,6 +53,7 @@ pub enum TokenType {
     Tfix,
     Tand,
     Tor,
+    Twhile,
 }
 
 impl<'s> Scanner<'s> {
@@ -257,6 +258,7 @@ impl<'s> Scanner<'s> {
             ("fix", TokenType::Tfix),
             ("and", TokenType::Tand),
             ("or", TokenType::Tor),
+            ("while", TokenType::Twhile),
         ]);
 
         let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
@@ -270,6 +272,7 @@ impl<'s> Scanner<'s> {
             TokenType::Tfix => TokenType::Tfix,
             TokenType::Tand => TokenType::Tand,
             TokenType::Tor => TokenType::Tor,
+            TokenType::Twhile => TokenType::Twhile,
             _ => TokenType::TId,
         })
     }
