@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[derive(Debug)]
 pub struct Scanner<'s> {
     pub start: &'s str,
@@ -18,17 +16,17 @@ pub struct Token {
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[repr(usize)]
 pub enum TokenType {
-    TLp,
-    TRp,
-    TPlus,
+    Tlp,
+    Trp,
+    Tplus,
     Tminus,
-    TSemicolon,
+    Tsemicolon,
     Tint,
     Tfloat,
-    TStr,
-    TId,
-    TEof,
-    TErr,
+    Tstr,
+    Tid,
+    Teof,
+    Terr,
     TdivOp,
     TmulOp,
     TmodOp,
@@ -37,7 +35,7 @@ pub enum TokenType {
     Ttrue,
     Tfalse,
     Tnot,
-    Teqeq,
+    TeqEq,
     Teq,
     TnotEq,
     Tgt,
@@ -54,6 +52,8 @@ pub enum TokenType {
     Tand,
     Tor,
     Twhile,
+    Tloop,
+    Tstop,
 }
 
 impl<'s> Scanner<'s> {
@@ -69,18 +69,18 @@ impl<'s> Scanner<'s> {
         self.start = self.current;
 
         if self.is_at_end() {
-            return self.generate_token(TokenType::TEof);
+            return self.generate_token(TokenType::Teof);
         }
 
         let c = self.advance();
         match c {
-            '+' => self.generate_token(TokenType::TPlus),
-            ';' => self.generate_token(TokenType::TSemicolon),
+            '+' => self.generate_token(TokenType::Tplus),
+            ';' => self.generate_token(TokenType::Tsemicolon),
             '"' => self.string_tokens(),
             c if c.is_ascii_digit() => self.num_tokens(),
             c if c.is_ascii_alphanumeric() || c == '_' => self.identifier(),
-            '(' => self.generate_token(TokenType::TLp),
-            ')' => self.generate_token(TokenType::TRp),
+            '(' => self.generate_token(TokenType::Tlp),
+            ')' => self.generate_token(TokenType::Trp),
             '-' => self.generate_token(TokenType::Tminus),
             '%' => self.generate_token(TokenType::TmodOp),
             '*' => self.generate_token(TokenType::TmulOp),
@@ -94,7 +94,7 @@ impl<'s> Scanner<'s> {
             }
             '=' => {
                 if self.match_tokens('=') {
-                    self.generate_token(TokenType::Teqeq)
+                    self.generate_token(TokenType::TeqEq)
                 } else {
                     self.generate_token(TokenType::Teq)
                 }
@@ -143,7 +143,7 @@ impl<'s> Scanner<'s> {
 
     fn err_token(&self, message: &'s str) -> Token {
         Token {
-            token_type: TokenType::TErr,
+            token_type: TokenType::Terr,
             start: message.to_string(),
             len: message.len(),
             line: self.line,
@@ -219,7 +219,7 @@ impl<'s> Scanner<'s> {
         }
 
         self.advance();
-        self.generate_token(TokenType::TStr)
+        self.generate_token(TokenType::Tstr)
     }
 
     fn num_tokens(&mut self) -> Token {
@@ -248,32 +248,20 @@ impl<'s> Scanner<'s> {
 
         let text = &self.start[..self.start.len() - self.current.len()];
 
-        let keywords: HashMap<&str, TokenType> = HashMap::from([
-            ("true", TokenType::Ttrue),
-            ("false", TokenType::Tfalse),
-            ("print", TokenType::Tprint),
-            ("set", TokenType::Tset),
-            ("if", TokenType::Tif),
-            ("else", TokenType::Telse),
-            ("fix", TokenType::Tfix),
-            ("and", TokenType::Tand),
-            ("or", TokenType::Tor),
-            ("while", TokenType::Twhile),
-        ]);
-
-        let t_type = keywords.get(text).unwrap_or(&TokenType::TId);
-        self.generate_token(match *t_type {
-            TokenType::Ttrue => TokenType::Ttrue,
-            TokenType::Tfalse => TokenType::Tfalse,
-            TokenType::Tprint => TokenType::Tprint,
-            TokenType::Tset => TokenType::Tset,
-            TokenType::Tif => TokenType::Tif,
-            TokenType::Telse => TokenType::Telse,
-            TokenType::Tfix => TokenType::Tfix,
-            TokenType::Tand => TokenType::Tand,
-            TokenType::Tor => TokenType::Tor,
-            TokenType::Twhile => TokenType::Twhile,
-            _ => TokenType::TId,
+        self.generate_token(match text {
+            "true" => TokenType::Ttrue,
+            "false" => TokenType::Tfalse,
+            "print" => TokenType::Tprint,
+            "set" => TokenType::Tset,
+            "if" => TokenType::Tif,
+            "else" => TokenType::Telse,
+            "fix" => TokenType::Tfix,
+            "and" => TokenType::Tand,
+            "or" => TokenType::Tor,
+            "while" => TokenType::Twhile,
+            "loop" => TokenType::Tloop,
+            "stop" => TokenType::Tstop,
+            _ => TokenType::Tid,
         })
     }
 }

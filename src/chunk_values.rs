@@ -2,10 +2,10 @@ use std::{
     fmt::{self},
     ops::Neg,
     rc::Rc,
-    u8,
+    u16,
 };
 
-#[repr(u8)]
+#[repr(u16)]
 pub enum OpCode {
     OpR,
     OpC,
@@ -62,7 +62,7 @@ pub enum OpCode {
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub code: Vec<u8>,
+    pub code: Vec<u16>,
     pub constant: ValueArray,
     pub line: Vec<usize>,
 }

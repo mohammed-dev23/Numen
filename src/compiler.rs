@@ -25,6 +25,8 @@ pub struct Compiler {
     locals: Vec<Local>,
     local_count: i64,
     scope_depth: i64,
+    stop_jump: Vec<usize>,
+    in_loop: bool,
 }
 
 #[derive(Debug)]
@@ -40,6 +42,8 @@ impl Compiler {
             locals: Vec::new(),
             local_count: 0,
             scope_depth: 0,
+            stop_jump: Vec::new(),
+            in_loop: false,
         }
     }
 
@@ -47,9 +51,9 @@ impl Compiler {
         self.scope_depth += 1;
     }
 
-    fn end_scope(&mut self) -> u8 {
+    fn end_scope(&mut self) -> u16 {
         self.scope_depth -= 1;
-        let mut pops: u8 = 0;
+        let mut pops: u16 = 0;
 
         while self.local_count > 0
             && self.locals[(self.local_count - 1) as usize].depth > self.scope_depth
@@ -88,7 +92,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 36] = [
+static RULES: [ParseRules; 38] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -217,6 +221,8 @@ static RULES: [ParseRules; 36] = [
         prec: Precedence::Or,
     },
     NONE_RULE,
+    NONE_RULE,
+    NONE_RULE,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -236,7 +242,7 @@ pub enum Precedence {
 
 pub fn new_parser<'p>(chunk: &'p mut Chunk, source: &'p str) -> Parser<'p> {
     let dummy_token = Token {
-        token_type: TokenType::TEof,
+        token_type: TokenType::Teof,
         start: String::new(),
         len: 0,
         line: 0,
@@ -260,7 +266,7 @@ pub fn advance(parser: &mut Parser) {
     loop {
         parser.current = parser.scanner.scan_tokens();
 
-        if parser.current.token_type != TokenType::TErr {
+        if parser.current.token_type != TokenType::Terr {
             break;
         }
 
@@ -286,9 +292,9 @@ pub fn error_at(parser: &mut Parser, token: Token, message: &str) {
     parser.panic_mode = true;
     print!("[{:?} , {} Error]", token, token.line);
 
-    if token.token_type == TokenType::TEof {
+    if token.token_type == TokenType::Teof {
         print!(" at end");
-    } else if token.token_type == TokenType::TErr {
+    } else if token.token_type == TokenType::Terr {
         //idk
     } else {
         print!(" at '{}' , '{}' ", token.len, token.start)
@@ -312,10 +318,10 @@ fn end_compile(parser: &mut Parser) {
 }
 
 fn emit_return(parser: &mut Parser) {
-    emit_byte(parser, OpCode::OpR as u8);
+    emit_byte(parser, OpCode::OpR as u16);
 }
 
-fn emit_byte(parser: &mut Parser, byte: u8) {
+fn emit_byte(parser: &mut Parser, byte: u16) {
     parser.chunk.write_chunk(byte, parser.previous.line);
 }
 
@@ -323,7 +329,7 @@ fn expression(parser: &mut Parser) {
     parse_precedence(parser, Precedence::Assignment);
 }
 
-fn emit_bytes(parser: &mut Parser, byte1: u8, byte2: u8) {
+fn emit_bytes(parser: &mut Parser, byte1: u16, byte2: u16) {
     emit_byte(parser, byte1);
     emit_byte(parser, byte2);
 }
@@ -359,32 +365,32 @@ fn variable(parser: &mut Parser, can_assign: bool) {
 fn named_variable(parser: &mut Parser, name: Token, can_assign: bool) {
     let arg = resolve_locals(parser, &name);
 
-    let get_op: u8;
-    let set_op: u8;
+    let get_op: u16;
+    let set_op: u16;
 
     let arg = if arg.0 != -1 {
-        get_op = OpCode::OpGetLocal as u8;
+        get_op = OpCode::OpGetLocal as u16;
 
         set_op = if arg.1 {
-            OpCode::OpSetLocal as u8
+            OpCode::OpSetLocal as u16
         } else {
-            OpCode::OpSetLocalFixed as u8
+            OpCode::OpSetLocalFixed as u16
         };
 
-        arg.0 as u8
+        arg.0 as u16
     } else {
         let arg = ider_constant(parser, name);
-        get_op = OpCode::OpGetGlobal as u8;
-        set_op = OpCode::OpSetGlobal as u8;
+        get_op = OpCode::OpGetGlobal as u16;
+        set_op = OpCode::OpSetGlobal as u16;
 
         arg
     };
 
     if can_assign && match_tokens(parser, TokenType::Teq) {
         expression(parser);
-        emit_bytes(parser, set_op, arg);
+        emit_bytes(parser, set_op, arg as u16);
     } else {
-        emit_bytes(parser, get_op, arg);
+        emit_bytes(parser, get_op, arg as u16);
     }
 }
 
@@ -408,23 +414,23 @@ fn resolve_locals(parser: &mut Parser, name: &Token) -> (i64, bool) {
 
 fn emit_constant<'p>(parser: &mut Parser<'p>, value: Values) {
     let make = make_constant(parser, value);
-    emit_bytes(parser, OpCode::OpC as u8, make);
+    emit_bytes(parser, OpCode::OpC as u16, make as u16)
 }
 
-fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u8 {
+fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u16 {
     let cons = parser.chunk.add_constant(value);
 
-    if cons > u8::MAX as usize {
+    if cons > u16::MAX {
         error(parser, "Too many constants in one chunk.");
         return 0;
     }
 
-    cons as u8
+    cons as u16
 }
 
 fn grouping(parser: &mut Parser, _can_assign: bool) {
     expression(parser);
-    consume(parser, "Expect ')' after expression.", TokenType::TRp);
+    consume(parser, "Expect ')' after expression.", TokenType::Trp);
 }
 
 fn parse_precedence(parser: &mut Parser, prec: Precedence) {
@@ -461,8 +467,8 @@ fn unary(parser: &mut Parser, _can_assign: bool) {
     parse_precedence(parser, Precedence::Unary);
 
     match optype {
-        TokenType::Tminus => emit_byte(parser, OpCode::OpNegate as u8),
-        TokenType::Tnot => emit_byte(parser, OpCode::OpNot as u8),
+        TokenType::Tminus => emit_byte(parser, OpCode::OpNegate as u16),
+        TokenType::Tnot => emit_byte(parser, OpCode::OpNot as u16),
         _ => error(parser, "unsupported operand."),
     }
 }
@@ -488,21 +494,21 @@ fn binary(parser: &mut Parser, _can_assign: bool) {
     parse_precedence(parser, next_rule);
 
     match optype {
-        TokenType::TPlus => emit_byte(parser, OpCode::OpAdd as u8),
-        TokenType::Tminus => emit_byte(parser, OpCode::OpSubtract as u8),
-        TokenType::TdivOp => emit_byte(parser, OpCode::OpDivide as u8),
-        TokenType::TmulOp => emit_byte(parser, OpCode::OpMultiply as u8),
-        TokenType::TmodOp => emit_byte(parser, OpCode::OpMod as u8),
-        TokenType::TpowOp => emit_byte(parser, OpCode::OpPow as u8),
-        TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u8),
-        TokenType::Teqeq => emit_byte(parser, OpCode::OpEqEq as u8),
-        TokenType::TnotEq => emit_byte(parser, OpCode::OpNotEq as u8),
-        TokenType::Tgt => emit_byte(parser, OpCode::OpGt as u8),
-        TokenType::Tlt => emit_byte(parser, OpCode::OpLt as u8),
-        TokenType::Tgte => emit_byte(parser, OpCode::OpGte as u8),
-        TokenType::Tlte => emit_byte(parser, OpCode::OpLte as u8),
-        TokenType::Tand => emit_byte(parser, OpCode::OpAnd as u8),
-        TokenType::Tor => emit_byte(parser, OpCode::OpOr as u8),
+        TokenType::Tplus => emit_byte(parser, OpCode::OpAdd as u16),
+        TokenType::Tminus => emit_byte(parser, OpCode::OpSubtract as u16),
+        TokenType::TdivOp => emit_byte(parser, OpCode::OpDivide as u16),
+        TokenType::TmulOp => emit_byte(parser, OpCode::OpMultiply as u16),
+        TokenType::TmodOp => emit_byte(parser, OpCode::OpMod as u16),
+        TokenType::TpowOp => emit_byte(parser, OpCode::OpPow as u16),
+        TokenType::TdivdivOp => emit_byte(parser, OpCode::OpDivideDivide as u16),
+        TokenType::TeqEq => emit_byte(parser, OpCode::OpEqEq as u16),
+        TokenType::TnotEq => emit_byte(parser, OpCode::OpNotEq as u16),
+        TokenType::Tgt => emit_byte(parser, OpCode::OpGt as u16),
+        TokenType::Tlt => emit_byte(parser, OpCode::OpLt as u16),
+        TokenType::Tgte => emit_byte(parser, OpCode::OpGte as u16),
+        TokenType::Tlte => emit_byte(parser, OpCode::OpLte as u16),
+        TokenType::Tand => emit_byte(parser, OpCode::OpAnd as u16),
+        TokenType::Tor => emit_byte(parser, OpCode::OpOr as u16),
         _ => unreachable!(),
     }
 }
@@ -536,17 +542,21 @@ fn statement(parser: &mut Parser) {
         let pops = parser.compiler.as_mut().unwrap().end_scope();
 
         for _ in 0..pops {
-            emit_byte(parser, OpCode::OpPop as u8);
+            emit_byte(parser, OpCode::OpPop as u16);
         }
     } else if match_tokens(parser, TokenType::Twhile) {
         while_statement(parser);
+    } else if match_tokens(parser, TokenType::Tloop) {
+        loop_statement(parser);
+    } else if match_tokens(parser, TokenType::Tstop) {
+        stop_statement(parser);
     } else {
         expression_statement(parser);
     }
 }
 
 fn block(parser: &mut Parser) {
-    while !check(parser, TokenType::Trb) && !check(parser, TokenType::TEof) {
+    while !check(parser, TokenType::Trb) && !check(parser, TokenType::Teof) {
         declaration(parser);
     }
 
@@ -555,62 +565,123 @@ fn block(parser: &mut Parser) {
 
 fn print_statement(parser: &mut Parser) {
     expression(parser);
-    consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
-    emit_byte(parser, OpCode::OpPrint as u8);
+    consume(parser, "Expect ';' after value.", TokenType::Tsemicolon);
+    emit_byte(parser, OpCode::OpPrint as u16);
 }
 
 fn if_statement(parser: &mut Parser) {
     expression(parser);
 
-    let then_jump = emit_jump(parser, OpCode::OpJumpIfFalse as u8);
-    emit_byte(parser, OpCode::OpPop as u8);
+    let then_jump = emit_jump(parser, OpCode::OpJumpIfFalse as u16);
+    emit_byte(parser, OpCode::OpPop as u16);
 
     statement(parser);
 
-    let else_jump = emit_jump(parser, OpCode::OpJump as u8);
+    let else_jump = emit_jump(parser, OpCode::OpJump as u16);
     patch_jump(parser, then_jump);
-    emit_byte(parser, OpCode::OpPop as u8);
+    emit_byte(parser, OpCode::OpPop as u16);
 
     if match_tokens(parser, TokenType::Telse) {
         statement(parser);
-        patch_jump(parser, else_jump);
     }
+
+    patch_jump(parser, else_jump);
 }
 
 fn while_statement(parser: &mut Parser) {
+    parser.compiler.as_mut().unwrap().in_loop = true;
+
     let loop_start = parser.chunk.code.len();
     expression(parser);
 
-    let exit = emit_jump(parser, OpCode::OpJumpIfFalse as u8);
-    emit_byte(parser, OpCode::OpPop as u8);
+    let exit = emit_jump(parser, OpCode::OpJumpIfFalse as u16);
+    emit_byte(parser, OpCode::OpPop as u16);
     statement(parser);
 
-    emit_loop(parser, loop_start as u8);
+    emit_loop(parser, loop_start as u16);
 
     patch_jump(parser, exit);
-    emit_byte(parser, OpCode::OpPop as u8);
+    emit_byte(parser, OpCode::OpPop as u16);
+
+    let stop_jump = parser
+        .compiler
+        .as_mut()
+        .unwrap()
+        .stop_jump
+        .drain(..)
+        .collect::<Vec<_>>();
+
+    for i in stop_jump {
+        patch_jump(parser, i);
+    }
+
+    parser.compiler.as_mut().unwrap().in_loop = false
 }
 
-fn emit_jump(parser: &mut Parser, instruction: u8) -> usize {
+fn loop_statement(parser: &mut Parser) {
+    parser.compiler.as_mut().unwrap().in_loop = true;
+
+    let loop_start = parser.chunk.code.len();
+
+    consume(parser, "Expected '{' after loop body", TokenType::Tlb);
+    parser.compiler.as_mut().unwrap().begin_scope();
+    block(parser);
+
+    let pops = parser.compiler.as_mut().unwrap().end_scope();
+
+    for _ in 0..pops {
+        emit_byte(parser, OpCode::OpPop as u16);
+    }
+
+    emit_loop(parser, loop_start as u16);
+
+    let stop_jump = parser
+        .compiler
+        .as_mut()
+        .unwrap()
+        .stop_jump
+        .drain(..)
+        .collect::<Vec<_>>();
+
+    for i in stop_jump {
+        patch_jump(parser, i);
+    }
+
+    parser.compiler.as_mut().unwrap().in_loop = false
+}
+
+fn stop_statement(parser: &mut Parser) {
+    consume(parser, "Expected ';' after stop.", TokenType::Tsemicolon);
+
+    if !parser.compiler.as_ref().unwrap().in_loop {
+        error(parser, "can't use 'stop' outside of a loop.");
+        return;
+    }
+
+    let jump = emit_jump(parser, OpCode::OpJump as u16);
+    parser.compiler.as_mut().unwrap().stop_jump.push(jump);
+}
+
+fn emit_jump(parser: &mut Parser, instruction: u16) -> usize {
     emit_byte(parser, instruction);
     emit_byte(parser, 0xff);
     emit_byte(parser, 0xff);
     parser.chunk.code.len() - 2
 }
 
-fn emit_loop(parser: &mut Parser, loop_start: u8) {
-    emit_byte(parser, OpCode::OpLoop as u8);
+fn emit_loop(parser: &mut Parser, loop_start: u16) {
+    emit_byte(parser, OpCode::OpLoop as u16);
 
-    let offset = parser.chunk.code.len() as u8 - loop_start + 2;
+    let offset = parser.chunk.code.len() as u16 - loop_start + 2;
 
-    emit_byte(parser, ((offset as u16 >> 8) & 0xff) as u8);
-    emit_byte(parser, offset & 0xff);
+    emit_byte(parser, ((offset as u16 >> 8) & 0xff) as u16);
+    emit_byte(parser, (offset & 0xff) as u16);
 }
 
 fn patch_jump(parser: &mut Parser, offset: usize) {
     let jump = parser.chunk.code.len() - offset - 2;
-    parser.chunk.code[offset] = ((jump >> 8) & 0xff) as u8;
-    parser.chunk.code[offset + 1] = (jump & 0xff) as u8;
+    parser.chunk.code[offset] = ((jump >> 8) & 0xff) as u16;
+    parser.chunk.code[offset + 1] = (jump & 0xff) as u16;
 }
 
 fn var_declaration(parser: &mut Parser, is_mut: bool) {
@@ -624,20 +695,20 @@ fn var_declaration(parser: &mut Parser, is_mut: bool) {
     consume(
         parser,
         "Expect ';' after variable declaration.",
-        TokenType::TSemicolon,
+        TokenType::Tsemicolon,
     );
     define_var(parser, var, is_mut);
 }
 
-fn define_var(parser: &mut Parser, var: u8, is_mut: bool) {
+fn define_var(parser: &mut Parser, var: u16, is_mut: bool) {
     if parser.compiler.as_ref().unwrap().scope_depth > 0 {
         parser.compiler.as_mut().unwrap().mark_initialized();
         return;
     }
     if is_mut {
-        emit_bytes(parser, OpCode::OpDefGlobal as u8, var);
+        emit_bytes(parser, OpCode::OpDefGlobal as u16, var as u16);
     } else {
-        emit_bytes(parser, OpCode::OpDefFixed as u8, var);
+        emit_bytes(parser, OpCode::OpDefFixed as u16, var as u16);
     }
 }
 
@@ -675,27 +746,27 @@ fn ider_eq(v1: &Token, v2: &Token) -> bool {
     v1.start == v2.start
 }
 
-fn parse_var(parser: &mut Parser, message: &str, is_mut: bool) -> u8 {
-    consume(parser, message, TokenType::TId);
+fn parse_var(parser: &mut Parser, message: &str, is_mut: bool) -> u16 {
+    consume(parser, message, TokenType::Tid);
 
     declare_var(parser, is_mut);
     if parser.compiler.as_ref().unwrap().scope_depth > 0 {
         let idx = parser.compiler.as_ref().unwrap().local_count - 1;
-        return idx as u8;
+        return idx as u16;
     }
 
     ider_constant(parser, parser.previous.clone())
 }
 
-fn ider_constant(parser: &mut Parser, name: Token) -> u8 {
+fn ider_constant(parser: &mut Parser, name: Token) -> u16 {
     let value = Values::Str(name.start.into());
     make_constant(parser, value)
 }
 
 fn expression_statement(parser: &mut Parser) {
     expression(parser);
-    consume(parser, "Expect ';' after value.", TokenType::TSemicolon);
-    emit_byte(parser, OpCode::OpPop as u8);
+    consume(parser, "Expect ';' after value.", TokenType::Tsemicolon);
+    emit_byte(parser, OpCode::OpPop as u16);
 }
 
 fn match_tokens(parser: &mut Parser, t_type: TokenType) -> bool {
@@ -713,8 +784,8 @@ fn check(parser: &mut Parser, t_type: TokenType) -> bool {
 fn sync(parser: &mut Parser) {
     parser.panic_mode = false;
 
-    while parser.current.token_type != TokenType::TEof {
-        if parser.previous.token_type == TokenType::TSemicolon {
+    while parser.current.token_type != TokenType::Teof {
+        if parser.previous.token_type == TokenType::Tsemicolon {
             return;
         }
         match parser.current.token_type {
@@ -727,7 +798,7 @@ fn sync(parser: &mut Parser) {
 pub fn compile(parser: &mut Parser) -> bool {
     advance(parser);
 
-    while !match_tokens(parser, TokenType::TEof) {
+    while !match_tokens(parser, TokenType::Teof) {
         declaration(parser);
     }
 

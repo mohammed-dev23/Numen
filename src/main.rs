@@ -17,11 +17,6 @@ fn main() -> io::Result<()> {
     fs::File::open("/home/mohammed/programming/Rust/practice/numen/example.num")?
         .read_to_string(&mut file)?;
 
-    let chunk = Chunk::new_chunk();
-
-    chunk.disassembler("");
-
-    VM::new_vm(chunk).interpret(&file);
-
+    VM::new_vm(Chunk::new_chunk()).interpret(&file);
     Ok(())
 }

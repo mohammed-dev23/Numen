@@ -100,196 +100,196 @@ impl VM {
             let instruction = self.read_bytes();
 
             match instruction {
-                i if i == OpCode::OpR as u8 => {
+                i if i == OpCode::OpR as u16 => {
                     return InterpretResult::InterpretOK;
                 }
 
-                i if i == OpCode::OpC as u8 => {
+                i if i == OpCode::OpC as u16 => {
                     let constant = self.read_constant();
                     self.stack.push(constant);
                     continue;
                 }
 
-                i if i == OpCode::OpAdd as u8 => {
+                i if i == OpCode::OpAdd as u16 => {
                     if !self.binary_op(BinaryOp::Add) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpSubtract as u8 => {
+                i if i == OpCode::OpSubtract as u16 => {
                     if !self.binary_op(BinaryOp::Subtract) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpDivide as u8 => {
+                i if i == OpCode::OpDivide as u16 => {
                     if !self.binary_op(BinaryOp::Divide) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpMultiply as u8 => {
+                i if i == OpCode::OpMultiply as u16 => {
                     if !self.binary_op(BinaryOp::Multiply) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpMod as u8 => {
+                i if i == OpCode::OpMod as u16 => {
                     if !self.binary_op(BinaryOp::Mod) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpPow as u8 => {
+                i if i == OpCode::OpPow as u16 => {
                     if !self.binary_op(BinaryOp::Pow) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpNegate as u8 => {
+                i if i == OpCode::OpNegate as u16 => {
                     if !self.unary_op(UnaryOp::Negate) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpSqrt as u8 => {
+                i if i == OpCode::OpSqrt as u16 => {
                     if !self.unary_op(UnaryOp::Sqrt) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpAbs as u8 => {
+                i if i == OpCode::OpAbs as u16 => {
                     if !self.unary_op(UnaryOp::Abs) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpFloor as u8 => {
+                i if i == OpCode::OpFloor as u16 => {
                     if !self.unary_op(UnaryOp::Floor) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpCeil as u8 => {
+                i if i == OpCode::OpCeil as u16 => {
                     if !self.unary_op(UnaryOp::Ceil) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpSin as u8 => {
+                i if i == OpCode::OpSin as u16 => {
                     if !self.unary_op(UnaryOp::Sin) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpCos as u8 => {
+                i if i == OpCode::OpCos as u16 => {
                     if !self.unary_op(UnaryOp::Cos) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpTan as u8 => {
+                i if i == OpCode::OpTan as u16 => {
                     if !self.unary_op(UnaryOp::Tan) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpEqEq as u8 => {
+                i if i == OpCode::OpEqEq as u16 => {
                     if !self.comparison_op(ComparisonOp::EqEq) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpNotEq as u8 => {
+                i if i == OpCode::OpNotEq as u16 => {
                     if !self.comparison_op(ComparisonOp::NotEq) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpGt as u8 => {
+                i if i == OpCode::OpGt as u16 => {
                     if !self.comparison_op(ComparisonOp::Gt) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpLt as u8 => {
+                i if i == OpCode::OpLt as u16 => {
                     if !self.comparison_op(ComparisonOp::Lt) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpGte as u8 => {
+                i if i == OpCode::OpGte as u16 => {
                     if !self.comparison_op(ComparisonOp::Gte) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpLte as u8 => {
+                i if i == OpCode::OpLte as u16 => {
                     if !self.comparison_op(ComparisonOp::Lte) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpDivideDivide as u8 => {
+                i if i == OpCode::OpDivideDivide as u16 => {
                     if !self.binary_op(BinaryOp::DivideDivide) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpNot as u8 => {
+                i if i == OpCode::OpNot as u16 => {
                     if !self.unary_op(UnaryOp::Not) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpPrint as u8 => {
+                i if i == OpCode::OpPrint as u16 => {
                     let value = self.stack.pop().unwrap();
                     println!("{}", value);
                     continue;
                 }
 
-                i if i == OpCode::OpPop as u8 => {
+                i if i == OpCode::OpPop as u16 => {
                     self.stack.pop().unwrap();
                     continue;
                 }
 
-                i if i == OpCode::OpDefGlobal as u8 => {
+                i if i == OpCode::OpDefGlobal as u16 => {
                     let name = self.read_constant().to_string();
                     self.globals
                         .set_table(&name, self.stack.pop().unwrap(), true);
                     continue;
                 }
 
-                i if i == OpCode::OpDefFixed as u8 => {
+                i if i == OpCode::OpDefFixed as u16 => {
                     let name = self.read_constant().to_string();
                     self.globals
                         .set_table(&name, self.stack.pop().unwrap(), false);
                     continue;
                 }
 
-                i if i == OpCode::OpGetGlobal as u8 => {
+                i if i == OpCode::OpGetGlobal as u16 => {
                     let name = self.read_constant().to_string();
 
                     if let Some((value, _)) = self.globals.get_value(&name) {
@@ -303,7 +303,7 @@ impl VM {
                     }
                 }
 
-                i if i == OpCode::OpSetGlobal as u8 => {
+                i if i == OpCode::OpSetGlobal as u16 => {
                     let name = self.read_constant().to_string();
 
                     match self.globals.get_value(&name) {
@@ -325,27 +325,27 @@ impl VM {
                     continue;
                 }
 
-                i if i == OpCode::OpGetLocal as u8 => {
+                i if i == OpCode::OpGetLocal as u16 => {
                     let slot = self.read_bytes();
                     let value = self.stack[slot as usize].clone();
                     self.stack.push(value);
                     continue;
                 }
 
-                i if i == OpCode::OpSetLocalFixed as u8 => {
+                i if i == OpCode::OpSetLocalFixed as u16 => {
                     let _slot = self.read_bytes();
                     self.runtime_errors("Cannot reassign immutable variable.");
                     return InterpretResult::InterpretRunTimeErr;
                 }
 
-                i if i == OpCode::OpSetLocal as u8 => {
+                i if i == OpCode::OpSetLocal as u16 => {
                     let slot = self.read_bytes();
                     self.stack[slot as usize] = self.stack.last().unwrap().clone();
 
                     continue;
                 }
 
-                i if i == OpCode::OpJumpIfFalse as u8 => {
+                i if i == OpCode::OpJumpIfFalse as u16 => {
                     let offset = self.read_short() as usize;
                     let value = self.stack.last().unwrap();
 
@@ -355,27 +355,27 @@ impl VM {
                     }
                 }
 
-                i if i == OpCode::OpAnd as u8 => {
+                i if i == OpCode::OpAnd as u16 => {
                     if !self.logical_op(LogicalOp::And) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpOr as u8 => {
+                i if i == OpCode::OpOr as u16 => {
                     if !self.logical_op(LogicalOp::Or) {
                         return InterpretResult::InterpretRunTimeErr;
                     }
                     continue;
                 }
 
-                i if i == OpCode::OpJump as u8 => {
+                i if i == OpCode::OpJump as u16 => {
                     let offset = self.read_short();
                     self.ip += offset as usize;
                     continue;
                 }
 
-                i if i == OpCode::OpLoop as u8 => {
+                i if i == OpCode::OpLoop as u16 => {
                     let offset = self.read_short();
                     self.ip -= offset as usize;
                     continue;
@@ -389,7 +389,7 @@ impl VM {
         }
     }
 
-    fn read_bytes(&mut self) -> u8 {
+    fn read_bytes(&mut self) -> u16 {
         let bytes = self.chunk.code[self.ip];
         self.ip += 1;
         bytes
