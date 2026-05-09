@@ -54,6 +54,7 @@ pub enum TokenType {
     Twhile,
     Tloop,
     Tstop,
+    Tcontinue,
 }
 
 impl<'s> Scanner<'s> {
@@ -261,6 +262,7 @@ impl<'s> Scanner<'s> {
             "while" => TokenType::Twhile,
             "loop" => TokenType::Tloop,
             "stop" => TokenType::Tstop,
+            "continue" => TokenType::Tcontinue,
             _ => TokenType::Tid,
         })
     }

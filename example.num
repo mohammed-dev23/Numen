@@ -1,111 +1,11 @@
-# ── Numen Showcase ─────────────────────────────────
-# Demonstrates: fix, set, while, loop, stop,
-#               if/else, print, and all operators
-
-# ── Constants ───────────────────────────────────────
-fix max_num   = 20;
-fix max_tries = 5;
-fix secret    = 13;   # change this to play!
-
-# ── Greeting ────────────────────────────────────────
-print "================================";
-print "   Welcome to Numen Guesser!   ";
-print "================================";
-print "Guess the number between 1 and";
-print max_num;
-print "You have this many tries:";
-print max_tries;
-print "--------------------------------";
-
-# ── Game state ──────────────────────────────────────
-set tries     = 0;
-set won       = false;
-set guess     = 0;      # simulate guesses below
-
-# ── Simulate a sequence of guesses ──────────────────
-# (swap in your own input when you add I/O)
-set guesses_left = 6;   # one extra so loop is visible
-
-while tries < max_tries {
-
-    tries = tries + 1;
-
-    # rotate through some example guesses
-    if tries == 1 { guess = 5;  }
-    if tries == 2 { guess = 15; }
-    if tries == 3 { guess = 10; }
-    if tries == 4 { guess = 12; }
-    if tries == 5 { guess = 13; }
-
-    print "--- Attempt:";
-    print tries;
-    print "Your guess:";
-    print guess;
-
-    if guess == secret {
-        won = true;
-        print "*** Correct! ***";
-        stop;
-    } else {
-        if guess < secret {
-            print "Too low!";
-        } else {
-            print "Too high!";
-        }
-    }
-}
-
-# ── Result ──────────────────────────────────────────
-print "================================";
-if won {
-    print "You won!  Tries used:";
-    print tries;
-
-    # star rating  (3 tries or fewer = 3 stars)
-    set stars = 0;
-    if tries <= 2 { stars = 3; }
-    if tries == 3 { stars = 3; }
-    if tries == 4 { stars = 2; }
-    if tries == 5 { stars = 1; }
-    print "Stars earned:";
-    print stars;
-} else {
-    print "Out of tries! The number was:";
-    print secret;
-}
-
-# ── Bonus: countdown with loop + stop ───────────────
-print "================================";
-print "Countdown to next round:";
-set n = 5;
+set i = 0;
 loop {
-    print n;
-    n = n - 1;
-    if n == 0 { stop; }
-}
-print "GO!";
-
-# ── Bonus: factorial of tries (loop + fix) ──────────
-print "================================";
-print "Fun math  --  tries! =";
-fix base   = tries;
-set result = 1;
-set i      = 1;
-while i <= base {
-    result = result * i;
     i = i + 1;
+    if i > 10 {
+        stop;
+    }
+    if i == 1 or i == 3 or i == 5 or i == 7 or i == 9 {
+        continue;
+    }
+    print i;
 }
-print result;
-
-# ── Trig / math sampler ─────────────────────────────
-print "================================";
-print "Some math extras:";
-fix pi_approx = 3;          # int approximation
-print "3 ^ 4 =";
-print 3 ^ 4;
-print "17 // 5 (floor div) =";
-print 17 // 5;
-print "17 % 5 (mod) =";
-print 17 % 5;
-print "================================";
-print "Done!";

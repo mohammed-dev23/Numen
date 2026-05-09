@@ -73,6 +73,7 @@ pub enum Values {
     Int(i64),
     Bool(bool),
     Str(Rc<str>),
+    Fnc(Rc<Fnc>),
     None,
 }
 
@@ -83,6 +84,7 @@ impl fmt::Display for Values {
             Self::Bool(b) => write!(f, "{}", b),
             Self::Int(i) => write!(f, "{}", i),
             Self::Float(fnum) => write!(f, "{}", fnum),
+            Self::Fnc(fnc) => write!(f, "Fn {}", fnc.name),
             _ => Err(fmt::Error::default()),
         }
     }
@@ -95,7 +97,6 @@ impl Neg for Values {
         match self {
             Values::Float(d) => Values::Float(-d),
             Values::Int(d) => Values::Int(-d),
-            Values::Bool(b) => Values::Bool(b),
             _ => Values::None,
         }
     }
@@ -174,6 +175,34 @@ impl Values {
             Values::Int(0) => true,
             Values::Float(f) => *f == 0.0,
             _ => false,
+        }
+    }
+
+    pub fn is_fn(&self) -> bool {
+        matches!(self, Values::Fnc(_))
+    }
+
+    pub fn as_fn(&self) -> Option<Rc<Fnc>> {
+        match self {
+            Values::Fnc(f) => Some(Rc::clone(f)),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Fnc {
+    pub name: String,
+    pub chunk: Chunk,
+    pub arity: usize,
+}
+
+impl Fnc {
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            chunk: Chunk::new_chunk(),
+            arity: 0,
         }
     }
 }

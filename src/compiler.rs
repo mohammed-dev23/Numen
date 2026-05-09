@@ -1,17 +1,17 @@
 use crate::{
-    chunk_values::{Chunk, OpCode, Values},
+    chunk_values::{Fnc, OpCode, Values},
     scanner::{Scanner, Token, TokenType},
 };
 
 #[derive(Debug)]
 pub struct Parser<'p> {
-    current: Token,
-    previous: Token,
-    had_err: bool,
-    panic_mode: bool,
-    chunk: &'p mut Chunk,
-    scanner: Scanner<'p>,
-    compiler: Option<Box<Compiler>>,
+    pub current: Token,
+    pub previous: Token,
+    pub had_err: bool,
+    pub panic_mode: bool,
+    pub scanner: Scanner<'p>,
+    pub compiler: Option<Box<Compiler>>,
+    pub loops: Loops,
 }
 
 pub struct ParseRules {
@@ -22,11 +22,11 @@ pub struct ParseRules {
 
 #[derive(Debug)]
 pub struct Compiler {
-    locals: Vec<Local>,
-    local_count: i64,
-    scope_depth: i64,
-    stop_jump: Vec<usize>,
-    in_loop: bool,
+    pub locals: Vec<Local>,
+    pub local_count: i64,
+    pub scope_depth: i64,
+    pub fnc: Fnc,
+    pub fnc_type: FncType,
 }
 
 #[derive(Debug)]
@@ -36,14 +36,27 @@ pub struct Local {
     is_mut: bool,
 }
 
+#[derive(Debug)]
+pub struct Loops {
+    stop_jump: Vec<usize>,
+    in_loop: bool,
+    loop_start: usize,
+}
+
+#[derive(Debug)]
+pub enum FncType {
+    FncType,
+    ScriptType,
+}
+
 impl Compiler {
-    pub fn new() -> Self {
+    pub fn new(fnc_type: FncType) -> Self {
         Self {
             locals: Vec::new(),
             local_count: 0,
             scope_depth: 0,
-            stop_jump: Vec::new(),
-            in_loop: false,
+            fnc_type,
+            fnc: Fnc::new(),
         }
     }
 
@@ -92,7 +105,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 38] = [
+static RULES: [ParseRules; 39] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -223,6 +236,7 @@ static RULES: [ParseRules; 38] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -240,7 +254,7 @@ pub enum Precedence {
     Prime,
 }
 
-pub fn new_parser<'p>(chunk: &'p mut Chunk, source: &'p str) -> Parser<'p> {
+pub fn new_parser<'p>(source: &'p str) -> Parser<'p> {
     let dummy_token = Token {
         token_type: TokenType::Teof,
         start: String::new(),
@@ -255,9 +269,13 @@ pub fn new_parser<'p>(chunk: &'p mut Chunk, source: &'p str) -> Parser<'p> {
         previous: dummy_token,
         had_err: false,
         panic_mode: false,
-        chunk,
         scanner,
-        compiler: Some(Box::new(Compiler::new())),
+        compiler: Some(Box::new(Compiler::new(FncType::ScriptType))),
+        loops: Loops {
+            stop_jump: Vec::new(),
+            in_loop: false,
+            loop_start: 0,
+        },
     }
 }
 pub fn advance(parser: &mut Parser) {
@@ -322,7 +340,13 @@ fn emit_return(parser: &mut Parser) {
 }
 
 fn emit_byte(parser: &mut Parser, byte: u16) {
-    parser.chunk.write_chunk(byte, parser.previous.line);
+    parser
+        .compiler
+        .as_mut()
+        .unwrap()
+        .fnc
+        .chunk
+        .write_chunk(byte, parser.previous.line);
 }
 
 fn expression(parser: &mut Parser) {
@@ -418,7 +442,13 @@ fn emit_constant<'p>(parser: &mut Parser<'p>, value: Values) {
 }
 
 fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u16 {
-    let cons = parser.chunk.add_constant(value);
+    let cons = parser
+        .compiler
+        .as_mut()
+        .unwrap()
+        .fnc
+        .chunk
+        .add_constant(value);
 
     if cons > u16::MAX {
         error(parser, "Too many constants in one chunk.");
@@ -550,6 +580,8 @@ fn statement(parser: &mut Parser) {
         loop_statement(parser);
     } else if match_tokens(parser, TokenType::Tstop) {
         stop_statement(parser);
+    } else if match_tokens(parser, TokenType::Tcontinue) {
+        continue_statement(parser);
     } else {
         expression_statement(parser);
     }
@@ -589,9 +621,10 @@ fn if_statement(parser: &mut Parser) {
 }
 
 fn while_statement(parser: &mut Parser) {
-    parser.compiler.as_mut().unwrap().in_loop = true;
+    let was_in_loop = parser.loops.in_loop;
+    parser.loops.in_loop = true;
 
-    let loop_start = parser.chunk.code.len();
+    let loop_start = parser.compiler.as_ref().unwrap().fnc.chunk.code.len();
     expression(parser);
 
     let exit = emit_jump(parser, OpCode::OpJumpIfFalse as u16);
@@ -603,25 +636,21 @@ fn while_statement(parser: &mut Parser) {
     patch_jump(parser, exit);
     emit_byte(parser, OpCode::OpPop as u16);
 
-    let stop_jump = parser
-        .compiler
-        .as_mut()
-        .unwrap()
-        .stop_jump
-        .drain(..)
-        .collect::<Vec<_>>();
+    let stop_jump = parser.loops.stop_jump.drain(..).collect::<Vec<_>>();
 
     for i in stop_jump {
         patch_jump(parser, i);
     }
 
-    parser.compiler.as_mut().unwrap().in_loop = false
+    parser.loops.in_loop = was_in_loop
 }
 
 fn loop_statement(parser: &mut Parser) {
-    parser.compiler.as_mut().unwrap().in_loop = true;
+    let was_in_loop = parser.loops.in_loop;
+    parser.loops.in_loop = true;
 
-    let loop_start = parser.chunk.code.len();
+    let loop_start = parser.compiler.as_ref().unwrap().fnc.chunk.code.len();
+    parser.loops.loop_start = loop_start;
 
     consume(parser, "Expected '{' after loop body", TokenType::Tlb);
     parser.compiler.as_mut().unwrap().begin_scope();
@@ -635,53 +664,56 @@ fn loop_statement(parser: &mut Parser) {
 
     emit_loop(parser, loop_start as u16);
 
-    let stop_jump = parser
-        .compiler
-        .as_mut()
-        .unwrap()
-        .stop_jump
-        .drain(..)
-        .collect::<Vec<_>>();
+    let stop_jump = parser.loops.stop_jump.drain(..).collect::<Vec<_>>();
 
     for i in stop_jump {
         patch_jump(parser, i);
     }
 
-    parser.compiler.as_mut().unwrap().in_loop = false
+    parser.loops.in_loop = was_in_loop
 }
 
 fn stop_statement(parser: &mut Parser) {
-    consume(parser, "Expected ';' after stop.", TokenType::Tsemicolon);
-
-    if !parser.compiler.as_ref().unwrap().in_loop {
+    if !parser.loops.in_loop {
         error(parser, "can't use 'stop' outside of a loop.");
         return;
     }
 
+    consume(parser, "Expected ';' after stop.", TokenType::Tsemicolon);
     let jump = emit_jump(parser, OpCode::OpJump as u16);
-    parser.compiler.as_mut().unwrap().stop_jump.push(jump);
+    parser.loops.stop_jump.push(jump);
+}
+
+fn continue_statement(parser: &mut Parser) {
+    if !parser.loops.in_loop {
+        error(parser, "can't use 'stop' outside of a loop.");
+        return;
+    }
+
+    consume(parser, "Expected ';' after stop.", TokenType::Tsemicolon);
+    emit_loop(parser, parser.loops.loop_start as u16);
 }
 
 fn emit_jump(parser: &mut Parser, instruction: u16) -> usize {
     emit_byte(parser, instruction);
     emit_byte(parser, 0xff);
     emit_byte(parser, 0xff);
-    parser.chunk.code.len() - 2
+    parser.compiler.as_ref().unwrap().fnc.chunk.code.len() - 2
 }
 
 fn emit_loop(parser: &mut Parser, loop_start: u16) {
     emit_byte(parser, OpCode::OpLoop as u16);
 
-    let offset = parser.chunk.code.len() as u16 - loop_start + 2;
+    let offset = parser.compiler.as_ref().unwrap().fnc.chunk.code.len() as u16 - loop_start + 2;
 
     emit_byte(parser, ((offset as u16 >> 8) & 0xff) as u16);
     emit_byte(parser, (offset & 0xff) as u16);
 }
 
 fn patch_jump(parser: &mut Parser, offset: usize) {
-    let jump = parser.chunk.code.len() - offset - 2;
-    parser.chunk.code[offset] = ((jump >> 8) & 0xff) as u16;
-    parser.chunk.code[offset + 1] = (jump & 0xff) as u16;
+    let jump = parser.compiler.as_ref().unwrap().fnc.chunk.code.len() - offset - 2;
+    parser.compiler.as_mut().unwrap().fnc.chunk.code[offset] = ((jump >> 8) & 0xff) as u16;
+    parser.compiler.as_mut().unwrap().fnc.chunk.code[offset + 1] = (jump & 0xff) as u16;
 }
 
 fn var_declaration(parser: &mut Parser, is_mut: bool) {
@@ -795,7 +827,7 @@ fn sync(parser: &mut Parser) {
     }
 }
 
-pub fn compile(parser: &mut Parser) -> bool {
+pub fn compile(parser: &mut Parser) -> Option<Fnc> {
     advance(parser);
 
     while !match_tokens(parser, TokenType::Teof) {
@@ -811,5 +843,9 @@ pub fn compile(parser: &mut Parser) -> bool {
         }
     }
 
-    !parser.had_err
+    if parser.had_err {
+        None
+    } else {
+        Some(parser.compiler.as_ref().unwrap().fnc.clone())
+    }
 }

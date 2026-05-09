@@ -66,14 +66,13 @@ impl VM {
     }
 
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
-        let mut chunk = self.chunk.clone();
-        let mut parser = new_parser(&mut chunk, source);
+        let mut parser = new_parser(source);
 
-        if !compile(&mut parser) {
+        if compile(&mut parser).is_none() {
             return InterpretResult::InterpretCompileErr;
         };
 
-        self.chunk = chunk;
+        self.chunk = parser.compiler.as_ref().unwrap().fnc.chunk.clone();
         self.ip = 0;
         self.run()
     }
