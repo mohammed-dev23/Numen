@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/N-NOBG.png" alt="Logo" width="350" />
+  <img src="assets/N-NOBG.png" alt="Logo" width="200" />
 </div>
 
 # Numen
