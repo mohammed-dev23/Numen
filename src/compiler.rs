@@ -1,5 +1,7 @@
+use std::{ops::DerefMut, rc::Rc};
+
 use crate::{
-    chunk_values::{Fnc, OpCode, Values},
+    chunk_values::{Func, OpCode, Values},
     scanner::{Scanner, Token, TokenType},
 };
 
@@ -25,8 +27,8 @@ pub struct Compiler {
     pub locals: Vec<Local>,
     pub local_count: i64,
     pub scope_depth: i64,
-    pub fnc: Fnc,
-    pub fnc_type: FncType,
+    pub func: Func,
+    pub func_type: FuncType,
 }
 
 #[derive(Debug)]
@@ -44,19 +46,19 @@ pub struct Loops {
 }
 
 #[derive(Debug)]
-pub enum FncType {
-    FncType,
+pub enum FuncType {
+    FuncType,
     ScriptType,
 }
 
 impl Compiler {
-    pub fn new(fnc_type: FncType) -> Self {
+    pub fn new(func_type: FuncType) -> Self {
         Self {
             locals: Vec::new(),
             local_count: 0,
             scope_depth: 0,
-            fnc_type,
-            fnc: Fnc::new(),
+            func_type,
+            func: Func::new(),
         }
     }
 
@@ -105,7 +107,7 @@ const NONE_RULE: ParseRules = ParseRules {
 
 // the index here does not start from 0 as the scanner TokenType enum does
 // it starts from one so be carful with that
-static RULES: [ParseRules; 39] = [
+static RULES: [ParseRules; 40] = [
     ParseRules {
         prefix: Some(grouping),
         infix: None,
@@ -237,6 +239,7 @@ static RULES: [ParseRules; 39] = [
     NONE_RULE,
     NONE_RULE,
     NONE_RULE,
+    NONE_RULE,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -270,7 +273,7 @@ pub fn new_parser<'p>(source: &'p str) -> Parser<'p> {
         had_err: false,
         panic_mode: false,
         scanner,
-        compiler: Some(Box::new(Compiler::new(FncType::ScriptType))),
+        compiler: Some(Box::new(Compiler::new(FuncType::ScriptType))),
         loops: Loops {
             stop_jump: Vec::new(),
             in_loop: false,
@@ -331,8 +334,9 @@ pub fn consume(parser: &mut Parser, message: &str, t_type: TokenType) {
     error_at_current(parser, message);
 }
 
-fn end_compile(parser: &mut Parser) {
+fn end_compile(parser: &mut Parser) -> Option<Func> {
     emit_return(parser);
+    Some(parser.compiler.as_ref().unwrap().func.clone())
 }
 
 fn emit_return(parser: &mut Parser) {
@@ -344,7 +348,7 @@ fn emit_byte(parser: &mut Parser, byte: u16) {
         .compiler
         .as_mut()
         .unwrap()
-        .fnc
+        .func
         .chunk
         .write_chunk(byte, parser.previous.line);
 }
@@ -446,7 +450,7 @@ fn make_constant<'p>(parser: &mut Parser<'p>, value: Values) -> u16 {
         .compiler
         .as_mut()
         .unwrap()
-        .fnc
+        .func
         .chunk
         .add_constant(value);
 
@@ -548,7 +552,9 @@ fn get_rules(t_type: TokenType) -> &'static ParseRules {
 }
 
 fn declaration(parser: &mut Parser) {
-    if match_tokens(parser, TokenType::Tset) {
+    if match_tokens(parser, TokenType::Tfunc) {
+        func_declaration(parser);
+    } else if match_tokens(parser, TokenType::Tset) {
         var_declaration(parser, true);
     } else if match_tokens(parser, TokenType::Tfix) {
         var_declaration(parser, false);
@@ -624,7 +630,7 @@ fn while_statement(parser: &mut Parser) {
     let was_in_loop = parser.loops.in_loop;
     parser.loops.in_loop = true;
 
-    let loop_start = parser.compiler.as_ref().unwrap().fnc.chunk.code.len();
+    let loop_start = parser.compiler.as_ref().unwrap().func.chunk.code.len();
     expression(parser);
 
     let exit = emit_jump(parser, OpCode::OpJumpIfFalse as u16);
@@ -649,7 +655,7 @@ fn loop_statement(parser: &mut Parser) {
     let was_in_loop = parser.loops.in_loop;
     parser.loops.in_loop = true;
 
-    let loop_start = parser.compiler.as_ref().unwrap().fnc.chunk.code.len();
+    let loop_start = parser.compiler.as_ref().unwrap().func.chunk.code.len();
     parser.loops.loop_start = loop_start;
 
     consume(parser, "Expected '{' after loop body", TokenType::Tlb);
@@ -698,22 +704,22 @@ fn emit_jump(parser: &mut Parser, instruction: u16) -> usize {
     emit_byte(parser, instruction);
     emit_byte(parser, 0xff);
     emit_byte(parser, 0xff);
-    parser.compiler.as_ref().unwrap().fnc.chunk.code.len() - 2
+    parser.compiler.as_ref().unwrap().func.chunk.code.len() - 2
 }
 
 fn emit_loop(parser: &mut Parser, loop_start: u16) {
     emit_byte(parser, OpCode::OpLoop as u16);
 
-    let offset = parser.compiler.as_ref().unwrap().fnc.chunk.code.len() as u16 - loop_start + 2;
+    let offset = parser.compiler.as_ref().unwrap().func.chunk.code.len() as u16 - loop_start + 2;
 
     emit_byte(parser, ((offset as u16 >> 8) & 0xff) as u16);
     emit_byte(parser, (offset & 0xff) as u16);
 }
 
 fn patch_jump(parser: &mut Parser, offset: usize) {
-    let jump = parser.compiler.as_ref().unwrap().fnc.chunk.code.len() - offset - 2;
-    parser.compiler.as_mut().unwrap().fnc.chunk.code[offset] = ((jump >> 8) & 0xff) as u16;
-    parser.compiler.as_mut().unwrap().fnc.chunk.code[offset + 1] = (jump & 0xff) as u16;
+    let jump = parser.compiler.as_ref().unwrap().func.chunk.code.len() - offset - 2;
+    parser.compiler.as_mut().unwrap().func.chunk.code[offset] = ((jump >> 8) & 0xff) as u16;
+    parser.compiler.as_mut().unwrap().func.chunk.code[offset + 1] = (jump & 0xff) as u16;
 }
 
 fn var_declaration(parser: &mut Parser, is_mut: bool) {
@@ -730,6 +736,34 @@ fn var_declaration(parser: &mut Parser, is_mut: bool) {
         TokenType::Tsemicolon,
     );
     define_var(parser, var, is_mut);
+}
+
+fn func_declaration(parser: &mut Parser) {
+    let global = parse_var(parser, "Expected function name.", false);
+    mark_initialized(parser);
+    func(parser, FuncType::FuncType);
+    define_var(parser, global, false);
+}
+
+fn mark_initialized(parser: &mut Parser) {
+    if parser.compiler.as_ref().unwrap().scope_depth == 0 {
+        return;
+    }
+}
+
+fn func(parser: &mut Parser, func_type: FuncType) {
+    let mut comp = Compiler::new(func_type);
+    comp.begin_scope();
+
+    consume(parser, "Expected '(' after function name.", TokenType::Tlp);
+    consume(parser, "Expected ')' after parameters.", TokenType::Trp);
+    consume(parser, "Expected '{' before function body.", TokenType::Tlb);
+    block(parser);
+
+    let func = Rc::new(end_compile(parser).unwrap());
+    let func_cons = make_constant(parser, Values::Func(func));
+
+    emit_bytes(parser, OpCode::OpC as u16, func_cons);
 }
 
 fn define_var(parser: &mut Parser, var: u16, is_mut: bool) {
@@ -827,25 +861,39 @@ fn sync(parser: &mut Parser) {
     }
 }
 
-pub fn compile(parser: &mut Parser) -> Option<Fnc> {
+pub fn compile(parser: &mut Parser) -> Option<Func> {
     advance(parser);
 
     while !match_tokens(parser, TokenType::Teof) {
         declaration(parser);
     }
 
-    end_compile(parser);
+    if parser.had_err {
+        return None;
+    }
 
     #[cfg(feature = "dbte")]
     {
         if !parser.had_err {
-            parser.chunk.disassembler("code");
+            let fnc_name = parser.compiler.as_ref().unwrap().fnc.name.clone();
+
+            if fnc_name.is_empty() {
+                print!("<script>")
+            }
+
+            parser
+                .compiler
+                .as_mut()
+                .unwrap()
+                .fnc
+                .chunk
+                .disassembler(&fnc_name);
         }
     }
 
     if parser.had_err {
-        None
-    } else {
-        Some(parser.compiler.as_ref().unwrap().fnc.clone())
+        return None;
     }
+
+    end_compile(parser)
 }

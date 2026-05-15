@@ -1,5 +1,5 @@
 use crate::{
-    chunk_values::{Chunk, OpCode, Values},
+    chunk_values::{Func, OpCode, Values},
     compiler::{compile, new_parser},
     table::Table,
 };
@@ -7,10 +7,15 @@ use crate::{
 use std::rc::Rc;
 
 pub struct VM {
-    chunk: Chunk,
-    ip: usize,
     stack: Vec<Values>,
     globals: Table,
+    frame: CallFrame,
+}
+
+pub struct CallFrame {
+    func: Func,
+    ip: u16,
+    slot_base: usize,
 }
 
 pub enum InterpretResult {
@@ -56,10 +61,13 @@ pub enum LogicalOp {
 }
 
 impl VM {
-    pub fn new_vm(chunk: Chunk) -> Self {
+    pub fn new_vm() -> Self {
         Self {
-            chunk,
-            ip: 0,
+            frame: CallFrame {
+                func: Func::new(),
+                ip: 0,
+                slot_base: 0,
+            },
             stack: Vec::new(),
             globals: Table::new(),
         }
@@ -67,13 +75,14 @@ impl VM {
 
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut parser = new_parser(source);
+        let fnc = compile(&mut parser);
 
-        if compile(&mut parser).is_none() {
+        if fnc.is_none() {
             return InterpretResult::InterpretCompileErr;
-        };
+        }
 
-        self.chunk = parser.compiler.as_ref().unwrap().fnc.chunk.clone();
-        self.ip = 0;
+        self.frame.func.chunk = parser.compiler.as_ref().unwrap().func.chunk.clone();
+        self.frame.ip = 0;
         self.run()
     }
 
@@ -81,7 +90,7 @@ impl VM {
         loop {
             #[cfg(feature = "dbte")]
             {
-                let offset_for_debug = self.ip;
+                let offset_for_debug = self.frame.ip;
                 print!("      ");
 
                 for i in &self.stack {
@@ -89,10 +98,13 @@ impl VM {
                 }
 
                 println!();
-                self.chunk.disassembler_instruction(offset_for_debug);
+                self.frame
+                    .fnc
+                    .chunk
+                    .disassembler_instruction(offset_for_debug as usize);
             }
 
-            if self.ip >= self.chunk.code.len() {
+            if self.frame.ip >= self.frame.func.chunk.code.len() as u16 {
                 return InterpretResult::InterpretOK;
             }
 
@@ -326,7 +338,7 @@ impl VM {
 
                 i if i == OpCode::OpGetLocal as u16 => {
                     let slot = self.read_bytes();
-                    let value = self.stack[slot as usize].clone();
+                    let value = self.stack[self.frame.slot_base + slot as usize].clone();
                     self.stack.push(value);
                     continue;
                 }
@@ -339,7 +351,8 @@ impl VM {
 
                 i if i == OpCode::OpSetLocal as u16 => {
                     let slot = self.read_bytes();
-                    self.stack[slot as usize] = self.stack.last().unwrap().clone();
+                    self.stack[self.frame.slot_base + slot as usize] =
+                        self.stack.last().unwrap().clone();
 
                     continue;
                 }
@@ -349,7 +362,7 @@ impl VM {
                     let value = self.stack.last().unwrap();
 
                     if value.is_false() {
-                        self.ip += offset;
+                        self.frame.ip += offset as u16;
                         continue;
                     }
                 }
@@ -370,13 +383,13 @@ impl VM {
 
                 i if i == OpCode::OpJump as u16 => {
                     let offset = self.read_short();
-                    self.ip += offset as usize;
+                    self.frame.ip += offset;
                     continue;
                 }
 
                 i if i == OpCode::OpLoop as u16 => {
                     let offset = self.read_short();
-                    self.ip -= offset as usize;
+                    self.frame.ip -= offset;
                     continue;
                 }
 
@@ -389,29 +402,29 @@ impl VM {
     }
 
     fn read_bytes(&mut self) -> u16 {
-        let bytes = self.chunk.code[self.ip];
-        self.ip += 1;
+        let bytes = self.frame.func.chunk.code[self.frame.ip as usize];
+        self.frame.ip += 1;
         bytes
     }
 
     fn read_constant(&mut self) -> Values {
         let index = self.read_bytes() as usize;
-        self.chunk.constant.values[index].clone()
+        self.frame.func.chunk.constant.values[index].clone()
     }
 
     fn read_short(&mut self) -> u16 {
-        let high = self.chunk.code[self.ip] as u16;
-        let low = self.chunk.code[self.ip + 1] as u16;
+        let high = self.frame.func.chunk.code[self.frame.ip as usize] as u16;
+        let low = self.frame.func.chunk.code[self.frame.ip as usize + 1] as u16;
 
-        self.ip += 2;
+        self.frame.ip += 2;
         (high << 8) | low
     }
 
     fn runtime_errors(&mut self, msg: &str) {
         eprintln!("{}", msg);
 
-        let instruction = self.ip - 1;
-        let line = self.chunk.line[instruction];
+        let instruction = self.frame.ip - 1;
+        let line = self.frame.func.chunk.line[instruction as usize];
         eprintln!("[line {}] in script", line);
 
         self.stack.clear();

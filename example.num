@@ -1,11 +1,14 @@
-set i = 0;
-loop {
-    i = i + 1;
-    if i > 10 {
-        stop;
+#main entry where code starts to run
+func main () {
+    set i = 0;
+    loop {
+        i = i + 1;
+        if i > 10 {
+            stop;
+        }
+        if i == 1 or i == 3 or i == 5 or i == 7 or i == 9 {
+            continue;
+        }
+        print i;
     }
-    if i == 1 or i == 3 or i == 5 or i == 7 or i == 9 {
-        continue;
-    }
-    print i;
 }
