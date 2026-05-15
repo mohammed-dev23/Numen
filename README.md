@@ -1,10 +1,10 @@
+<div align="center">
+  <img src="assets/N.png" alt="Logo" width="100" />
+</div>
 
 # Numen
 A programming language built in Rust, designed for science and general-purpose use.
 > ⚠️ Numen is currently in active development. Expect breaking changes.
-
-
-![Logo](assets/N-NOBG.png)
 
 
 ## What is Numen?
