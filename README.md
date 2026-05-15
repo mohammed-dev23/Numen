@@ -12,7 +12,7 @@ A programming language built in Rust, designed for science and general-purpose u
 Numen is a language that treats units as first-class citizens. Write code the way you think about physics and math — with units attached, not bolted on after the fact.
 
 ```numen
-fixed body_kg =  10 as kg;
+fix body_kg =  10 as kg;
 ```
 
 
