@@ -1,9 +1,10 @@
 
 # Numen
 A programming language built in Rust, designed for science and general-purpose use.
-
 > ⚠️ Numen is currently in active development. Expect breaking changes.
-![Logo](assets/N.png)
+
+
+![Logo](assets/N-NOBG.png)
 
 
 ## What is Numen?
@@ -18,7 +19,7 @@ fixed body_kg =  10 as kg;
 ## TODO!
 - [ X ] control flow
 - [  ] unit casting
-- [  ] std std library
+- [  ] std library
 - [  ]  func calls
 - [  ] io funcs
 
@@ -27,7 +28,7 @@ fixed body_kg =  10 as kg;
 - unit casting using the as keyword  
 - Built-in visualizer for math and more ..
 - Built-in Emulator for physics and more ..
-- simple syntex you can learn in a day
+- simple syntax you can learn in a day
 - more features will be added soon !.
 
 
@@ -37,7 +38,7 @@ fixed body_kg =  10 as kg;
 
 ```numen
 func main () {
-    pnrint "hello world";
+    print "hello world";
 }
 ```
 
