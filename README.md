@@ -71,7 +71,7 @@ using cargo and rust to build it !
   cargo run
 ```
 
-NOTE : for now make sure to edit the main.rs to your numen.numn dir
+NOTE : for now make sure to edit the main.rs to your numen.num dir
     
 ## Contributing
 
